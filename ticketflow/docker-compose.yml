@@ -1,0 +1,119 @@
+version: '3.9'
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', 'ping']
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  gateway:
+    build: ./gateway
+    ports:
+      - '3000:3000'
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - USER_SERVICE_URL=http://user-service:3001
+      - EVENT_SERVICE_URL=http://event-service:3002
+      - BOOKING_SERVICE_URL=http://booking-service:3003
+      - INVENTORY_SERVICE_URL=http://inventory-service:3004
+      - PAYMENT_SERVICE_URL=http://payment-service:3005
+    depends_on:
+      - user-service
+      - event-service
+      - booking-service
+      - inventory-service
+      - payment-service
+
+  user-service:
+    build: ./services/user-service
+    environment:
+      - DATABASE_URL=${USER_DB_URL}
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  event-service:
+    build: ./services/event-service
+    environment:
+      - DATABASE_URL=${EVENT_DB_URL}
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  booking-service:
+    build: ./services/booking-service
+    environment:
+      - DATABASE_URL=${BOOKING_DB_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - RABBITMQ_URL=${RABBITMQ_URL}
+      - INVENTORY_SERVICE_URL=http://inventory-service:3004
+      - PAYMENT_SERVICE_URL=http://payment-service:3005
+      - EVENT_SERVICE_URL=http://event-service:3002
+      - USER_SERVICE_URL=http://user-service:3001
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  inventory-service:
+    build: ./services/inventory-service
+    environment:
+      - DATABASE_URL=${INVENTORY_DB_URL}
+      - REDIS_URL=${REDIS_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  payment-service:
+    build: ./services/payment-service
+    environment:
+      - DATABASE_URL=${PAYMENT_DB_URL}
+      - PAYMENT_SUCCESS_RATE=${PAYMENT_SUCCESS_RATE:-0.95}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  notification-service:
+    build: ./services/notification-service
+    environment:
+      - RABBITMQ_URL=${RABBITMQ_URL}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
