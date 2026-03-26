@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../../../generated/client';
 import { AppError, Events, BookingConfirmedPayload } from '@ticketflow/shared';
 import { publisher } from '../messaging/publisher';
 

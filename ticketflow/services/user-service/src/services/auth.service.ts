@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../../../generated/client';
 import { AppError, JwtPayload } from '@ticketflow/shared';
 
 const prisma = new PrismaClient();

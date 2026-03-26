@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../../../generated/client';
 import { redisClient } from '../redis/client';
 
 // Mirror the Prisma enum locally so we can reference it before `prisma generate` runs

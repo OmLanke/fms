@@ -1,5 +1,5 @@
 import { paymentService } from './payment.service';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../../../generated/client';
 
 jest.mock('@prisma/client', () => {
   const mockPrisma = {

@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { bookingService } from './booking.service';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../../../generated/client';
 import { publisher } from '../messaging/publisher';
 
 jest.mock('axios');

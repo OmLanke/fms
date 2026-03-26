@@ -1,5 +1,5 @@
 import { authService } from './auth.service';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../../../generated/client';
 import bcrypt from 'bcryptjs';
 
 jest.mock('@prisma/client', () => {

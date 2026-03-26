@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../../../generated/client';
 import { AppError } from '@ticketflow/shared';
 import { CreateEventInput, UpdateEventInput } from '../schemas/event.schema';
 

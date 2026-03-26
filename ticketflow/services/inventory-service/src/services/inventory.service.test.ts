@@ -1,5 +1,5 @@
 import { inventoryService } from './inventory.service';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../../../generated/client';
 import { redisClient } from '../redis/client';
 
 jest.mock('@prisma/client', () => {
