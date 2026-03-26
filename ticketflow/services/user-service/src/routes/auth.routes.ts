@@ -15,6 +15,14 @@ const authLimiter = rateLimit({
   message: { error: { code: 'TOO_MANY_REQUESTS', message: 'Too many requests, please try again later.' } },
 });
 
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: { code: 'TOO_MANY_REQUESTS', message: 'Too many requests, please try again later.' } },
+});
+
 authRouter.post('/register', authLimiter, validate(registerSchema), register);
 authRouter.post('/login', authLimiter, validate(loginSchema), login);
-authRouter.get('/me', requireAuth, getMe);
+authRouter.get('/me', generalLimiter, requireAuth, getMe);
