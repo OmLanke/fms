@@ -57,6 +57,10 @@ export const eventService = {
   },
 
   async create(input: CreateEventInput) {
+    if (!input.venueId && !input.venueName) {
+      throw new AppError(400, 'VENUE_REQUIRED', 'Provide venueId to link an existing venue, or venueName/venueAddress/venueCity/venueCountry to create one');
+    }
+
     const venueConnect = input.venueId
       ? { connect: { id: input.venueId } }
       : {
@@ -68,10 +72,6 @@ export const eventService = {
             capacity: input.totalSeats,
           },
         };
-
-    if (!input.venueId && !input.venueName) {
-      throw new AppError(400, 'VENUE_REQUIRED', 'Provide venueId to link an existing venue, or venueName/venueAddress/venueCity/venueCountry to create one');
-    }
 
     const event = await prisma.event.create({
       data: {
