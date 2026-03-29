@@ -73,6 +73,8 @@ pnpm --filter inventory-service  run migrate
 pnpm --filter payment-service    run migrate
 ```
 
+These commands execute service-local SQL migration scripts used by Drizzle-based services.
+
 ### 5. Seed test data (optional but useful)
 
 ```bash
@@ -91,10 +93,12 @@ pnpm --filter payment-service        run dev &
 pnpm --filter notification-service   run dev &
 ```
 
-Or use the convenience script at the root:
+Or use the convenience scripts at the root:
 
 ```bash
 pnpm run dev:all
+# backend only:
+pnpm run dev:backend
 ```
 
 ---
