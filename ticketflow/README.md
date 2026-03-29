@@ -1,6 +1,6 @@
 # TicketFlow
 
-TicketFlow is a distributed event ticket booking platform built as a microservices architecture. It allows users to browse events, lock seats atomically using Redis, process payments, and receive email confirmations — all handled by independent Node.js/Express services communicating via REST and RabbitMQ.
+TicketFlow is a distributed event ticket booking platform built as a microservices architecture. It allows users to browse events, lock seats atomically using Redis, process payments, and receive email confirmations — all handled by independent Node.js/Express services communicating via REST and RabbitMQ, with Drizzle ORM for service-local data access.
 
 For full setup and run instructions, see [INSTRUCTIONS.md](../INSTRUCTIONS.md).
 
@@ -32,8 +32,11 @@ pnpm --filter booking-service run migrate
 pnpm --filter inventory-service run migrate
 pnpm --filter payment-service run migrate
 
-# 4. Start all services
+# 4. Start full stack (frontend + backend)
 pnpm run dev:all
+
+# Or backend only
+pnpm run dev:backend
 ```
 
 ## Architecture

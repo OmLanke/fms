@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev:all": "concurrently \"pnpm --filter gateway run dev\" \"pnpm --filter user-service run dev\" \"pnpm --filter event-service run dev\" \"pnpm --filter booking-service run dev\" \"pnpm --filter inventory-service run dev\" \"pnpm --filter payment-service run dev\" \"pnpm --filter notification-service run dev\"",
+    "dev:backend": "concurrently \"pnpm --filter gateway run dev\" \"pnpm --filter user-service run dev\" \"pnpm --filter event-service run dev\" \"pnpm --filter booking-service run dev\" \"pnpm --filter inventory-service run dev\" \"pnpm --filter payment-service run dev\" \"pnpm --filter notification-service run dev\"",
+    "dev:all": "concurrently \"pnpm run dev:backend\" \"pnpm --filter ticketflow-frontend run dev\"",
     "build": "pnpm -r run build",
     "test": "pnpm -r run test",
     "test:integration": "pnpm -r run test:integration"

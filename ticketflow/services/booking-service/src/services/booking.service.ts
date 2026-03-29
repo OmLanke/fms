@@ -1,9 +1,10 @@
 import axios from 'axios';
-import { PrismaClient } from '../../../generated/client';
+import { randomUUID } from 'crypto';
+import { desc, eq } from 'drizzle-orm';
 import { AppError, Events, BookingConfirmedPayload } from '@ticketflow/shared';
 import { publisher } from '../messaging/publisher';
-
-const prisma = new PrismaClient();
+import { db } from '../db/client';
+import { bookingItems, bookings } from '../db/schema';
 
 const INVENTORY_URL = process.env.INVENTORY_SERVICE_URL ?? 'http://localhost:3004';
 const PAYMENT_URL = process.env.PAYMENT_SERVICE_URL ?? 'http://localhost:3005';
@@ -21,10 +22,10 @@ function serializeBooking(booking: {
   userId: string;
   eventId: string;
   status: string;
-  totalAmount: { toString(): string };
+  totalAmount: { toString(): string } | string;
   items: Array<{ id: string; bookingId: string; seatId: string }>;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: Date | string;
+  updatedAt: Date | string;
 }) {
   return {
     id: booking.id,
@@ -33,9 +34,19 @@ function serializeBooking(booking: {
     status: booking.status,
     totalAmount: parseFloat(booking.totalAmount.toString()),
     items: booking.items,
-    createdAt: booking.createdAt.toISOString(),
-    updatedAt: booking.updatedAt.toISOString(),
+    createdAt: new Date(booking.createdAt).toISOString(),
+    updatedAt: new Date(booking.updatedAt).toISOString(),
   };
+}
+
+async function getBookingWithItems(id: string) {
+  const bookingRows = await db.select().from(bookings).where(eq(bookings.id, id)).limit(1);
+  const booking = bookingRows[0];
+  if (!booking) {
+    return null;
+  }
+  const items = await db.select().from(bookingItems).where(eq(bookingItems.bookingId, id));
+  return { ...booking, items };
 }
 
 export const bookingService = {
@@ -81,18 +92,25 @@ export const bookingService = {
 
     // Step 4: Create PENDING booking record
     const totalAmount = event.price * seatIds.length;
-    const booking = await prisma.booking.create({
-      data: {
+    const insertedBooking = await db
+      .insert(bookings)
+      .values({
+        id: randomUUID(),
         userId,
         eventId,
         status: 'PENDING',
-        totalAmount,
-        items: {
-          create: seatIds.map((seatId) => ({ seatId })),
-        },
-      },
-      include: { items: true },
-    });
+        totalAmount: totalAmount.toString(),
+      })
+      .returning();
+    const booking = insertedBooking[0];
+
+    await db.insert(bookingItems).values(
+      seatIds.map((seatId) => ({
+        id: randomUUID(),
+        bookingId: booking.id,
+        seatId,
+      }))
+    );
 
     // Step 5: Call Payment Service
     let paymentSuccess = false;
@@ -111,10 +129,10 @@ export const bookingService = {
         paymentSuccess = false;
       } else {
         await axios.post(`${INVENTORY_URL}/api/inventory/release`, { seatIds }).catch(() => null);
-        await prisma.booking.update({
-          where: { id: booking.id },
-          data: { status: 'FAILED' },
-        });
+        await db
+          .update(bookings)
+          .set({ status: 'FAILED', updatedAt: new Date() })
+          .where(eq(bookings.id, booking.id));
         throw new AppError(503, 'PAYMENT_SERVICE_UNAVAILABLE', 'Payment service unavailable');
       }
     }
@@ -122,11 +140,12 @@ export const bookingService = {
     if (!paymentSuccess) {
       // Release seat locks and mark booking FAILED
       await axios.post(`${INVENTORY_URL}/api/inventory/release`, { seatIds }).catch(() => null);
-      const failedBooking = await prisma.booking.update({
-        where: { id: booking.id },
-        data: { status: 'FAILED' },
-        include: { items: true },
-      });
+      const failedBookingRows = await db
+        .update(bookings)
+        .set({ status: 'FAILED', updatedAt: new Date() })
+        .where(eq(bookings.id, booking.id))
+        .returning();
+      const failedBooking = failedBookingRows[0];
       throw new AppError(402, 'PAYMENT_FAILED', 'Payment was declined', {
         bookingId: failedBooking.id,
       });
@@ -136,11 +155,14 @@ export const bookingService = {
     await axios.post(`${INVENTORY_URL}/api/inventory/confirm`, { seatIds }).catch(() => null);
 
     // Step 7: Mark booking CONFIRMED
-    const confirmedBooking = await prisma.booking.update({
-      where: { id: booking.id },
-      data: { status: 'CONFIRMED' },
-      include: { items: true },
-    });
+    const confirmedRows = await db
+      .update(bookings)
+      .set({ status: 'CONFIRMED', updatedAt: new Date() })
+      .where(eq(bookings.id, booking.id))
+      .returning();
+    const confirmed = confirmedRows[0];
+    const confirmedItems = await db.select().from(bookingItems).where(eq(bookingItems.bookingId, booking.id));
+    const confirmedBooking = { ...confirmed, items: confirmedItems };
 
     // Step 8: Publish BOOKING_CONFIRMED event to RabbitMQ (fire-and-forget, non-blocking)
     const payload: BookingConfirmedPayload = {
@@ -151,7 +173,7 @@ export const bookingService = {
       eventName: event.name,
       seatIds,
       totalAmount,
-      confirmedAt: confirmedBooking.updatedAt.toISOString(),
+      confirmedAt: new Date(confirmedBooking.updatedAt).toISOString(),
     };
     publisher.publish(Events.BOOKING_CONFIRMED, payload).catch((publishErr) => {
       console.error('Failed to publish BOOKING_CONFIRMED event:', publishErr);
@@ -161,10 +183,7 @@ export const bookingService = {
   },
 
   async getById(id: string, userId: string) {
-    const booking = await prisma.booking.findUnique({
-      where: { id },
-      include: { items: true },
-    });
+    const booking = await getBookingWithItems(id);
     if (!booking) {
       throw new AppError(404, 'BOOKING_NOT_FOUND', 'Booking not found');
     }
@@ -175,19 +194,19 @@ export const bookingService = {
   },
 
   async getByUser(userId: string) {
-    const bookings = await prisma.booking.findMany({
-      where: { userId },
-      include: { items: true },
-      orderBy: { createdAt: 'desc' },
-    });
-    return bookings.map(serializeBooking);
+    const bookingRows = await db.select().from(bookings).where(eq(bookings.userId, userId)).orderBy(desc(bookings.createdAt));
+    const serialized: Array<ReturnType<typeof serializeBooking>> = [];
+
+    for (const booking of bookingRows) {
+      const items = await db.select().from(bookingItems).where(eq(bookingItems.bookingId, booking.id));
+      serialized.push(serializeBooking({ ...booking, items }));
+    }
+
+    return serialized;
   },
 
   async confirm(id: string, userId: string) {
-    const booking = await prisma.booking.findUnique({
-      where: { id },
-      include: { items: true },
-    });
+    const booking = await getBookingWithItems(id);
     if (!booking) {
       throw new AppError(404, 'BOOKING_NOT_FOUND', 'Booking not found');
     }
@@ -197,19 +216,17 @@ export const bookingService = {
     if (booking.status !== 'PENDING') {
       throw new AppError(400, 'INVALID_STATUS', `Cannot confirm a booking in ${booking.status} status`);
     }
-    const updated = await prisma.booking.update({
-      where: { id },
-      data: { status: 'CONFIRMED' },
-      include: { items: true },
-    });
+    const updatedRows = await db
+      .update(bookings)
+      .set({ status: 'CONFIRMED', updatedAt: new Date() })
+      .where(eq(bookings.id, id))
+      .returning();
+    const updated = { ...updatedRows[0], items: booking.items };
     return serializeBooking(updated);
   },
 
   async cancel(id: string, userId: string) {
-    const booking = await prisma.booking.findUnique({
-      where: { id },
-      include: { items: true },
-    });
+    const booking = await getBookingWithItems(id);
     if (!booking) {
       throw new AppError(404, 'BOOKING_NOT_FOUND', 'Booking not found');
     }
@@ -219,13 +236,14 @@ export const bookingService = {
     if (booking.status === 'CANCELLED') {
       throw new AppError(400, 'ALREADY_CANCELLED', 'Booking is already cancelled');
     }
-    const seatIds = booking.items.map((item) => item.seatId);
+    const seatIds = booking.items.map((item: { seatId: string }) => item.seatId);
     await axios.post(`${INVENTORY_URL}/api/inventory/release`, { seatIds }).catch(() => null);
-    const updated = await prisma.booking.update({
-      where: { id },
-      data: { status: 'CANCELLED' },
-      include: { items: true },
-    });
+    const updatedRows = await db
+      .update(bookings)
+      .set({ status: 'CANCELLED', updatedAt: new Date() })
+      .where(eq(bookings.id, id))
+      .returning();
+    const updated = { ...updatedRows[0], items: booking.items };
     return serializeBooking(updated);
   },
 };

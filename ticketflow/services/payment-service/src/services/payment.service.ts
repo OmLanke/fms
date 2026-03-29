@@ -1,8 +1,9 @@
-import { PrismaClient } from '../../../generated/client';
+import { randomUUID } from 'crypto';
+import { eq } from 'drizzle-orm';
 import { AppError } from '@ticketflow/shared';
 import { ChargeInput } from '../schemas/payment.schema';
-
-const prisma = new PrismaClient();
+import { db } from '../db/client';
+import { payments } from '../db/schema';
 
 function getSuccessRate(): number {
   const rate = parseFloat(process.env.PAYMENT_SUCCESS_RATE ?? '0.95');
@@ -12,11 +13,11 @@ function getSuccessRate(): number {
 function serializePayment(payment: {
   id: string;
   bookingId: string;
-  amount: { toString(): string };
+  amount: { toString(): string } | string;
   currency: string;
   status: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: Date | string;
+  updatedAt: Date | string;
 }) {
   return {
     id: payment.id,
@@ -24,8 +25,8 @@ function serializePayment(payment: {
     amount: parseFloat(payment.amount.toString()),
     currency: payment.currency,
     status: payment.status,
-    createdAt: payment.createdAt.toISOString(),
-    updatedAt: payment.updatedAt.toISOString(),
+    createdAt: new Date(payment.createdAt).toISOString(),
+    updatedAt: new Date(payment.updatedAt).toISOString(),
   };
 }
 
@@ -35,20 +36,24 @@ export const paymentService = {
     const succeeded = Math.random() < successRate;
     const status = succeeded ? 'SUCCESS' : ('FAILED' as const);
 
-    const payment = await prisma.payment.create({
-      data: {
+    const inserted = await db
+      .insert(payments)
+      .values({
+        id: randomUUID(),
         bookingId: input.bookingId,
-        amount: input.amount,
+        amount: input.amount.toString(),
         currency: input.currency ?? 'USD',
         status,
-      },
-    });
+      })
+      .returning();
+    const payment = inserted[0];
 
     return serializePayment(payment);
   },
 
   async getById(id: string) {
-    const payment = await prisma.payment.findUnique({ where: { id } });
+    const found = await db.select().from(payments).where(eq(payments.id, id)).limit(1);
+    const payment = found[0];
     if (!payment) {
       throw new AppError(404, 'PAYMENT_NOT_FOUND', 'Payment not found');
     }

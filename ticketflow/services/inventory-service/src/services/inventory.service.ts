@@ -1,7 +1,10 @@
-import { PrismaClient } from '../../../generated/client';
+import { randomUUID } from 'crypto';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import { redisClient } from '../redis/client';
+import { db } from '../db/client';
+import { seats } from '../db/schema';
 
-// Mirror the Prisma enum locally so we can reference it before `prisma generate` runs
+// Local status constants used by both Redis lock logic and database updates.
 const SeatStatus = {
   AVAILABLE: 'AVAILABLE',
   LOCKED: 'LOCKED',
@@ -15,11 +18,9 @@ interface SeatRow {
   seatNumber: string;
   row: string;
   status: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: Date | string;
+  updatedAt: Date | string;
 }
-
-const prisma = new PrismaClient();
 
 const LOCK_PREFIX = 'seat:lock:';
 
@@ -35,14 +36,11 @@ async function lockSeat(seatId: string, bookingId: string, ttl: number): Promise
 
 export const inventoryService = {
   async getSeatsByEvent(eventId: string) {
-    const seats = await prisma.seat.findMany({
-      where: { eventId },
-      orderBy: [{ row: 'asc' }, { seatNumber: 'asc' }],
-    });
-    return seats.map((s: SeatRow) => ({
+    const seatRows = await db.select().from(seats).where(eq(seats.eventId, eventId)).orderBy(asc(seats.row), asc(seats.seatNumber));
+    return seatRows.map((s: SeatRow) => ({
       ...s,
-      createdAt: s.createdAt.toISOString(),
-      updatedAt: s.updatedAt.toISOString(),
+      createdAt: new Date(s.createdAt).toISOString(),
+      updatedAt: new Date(s.updatedAt).toISOString(),
     }));
   },
 
@@ -55,12 +53,13 @@ export const inventoryService = {
     const conflicting: string[] = [];
 
     for (const seatId of seatIds) {
-      const seat = await prisma.seat.findUnique({ where: { id: seatId } });
-      if (!seat) {
+      const seat = await db.select().from(seats).where(eq(seats.id, seatId)).limit(1);
+      const currentSeat = seat[0];
+      if (!currentSeat) {
         conflicting.push(seatId);
         break;
       }
-      if (seat.status === SeatStatus.RESERVED) {
+      if (currentSeat.status === SeatStatus.RESERVED) {
         conflicting.push(seatId);
         break;
       }
@@ -93,17 +92,14 @@ export const inventoryService = {
       pipeline.del(lockKey(seatId));
     }
     await pipeline.exec();
-    await prisma.seat.updateMany({
-      where: { id: { in: seatIds }, status: SeatStatus.LOCKED },
-      data: { status: SeatStatus.AVAILABLE },
-    });
+    await db
+      .update(seats)
+      .set({ status: SeatStatus.AVAILABLE, updatedAt: new Date() })
+      .where(and(inArray(seats.id, seatIds), eq(seats.status, SeatStatus.LOCKED)));
   },
 
   async confirmSeats(seatIds: string[]): Promise<void> {
-    await prisma.seat.updateMany({
-      where: { id: { in: seatIds } },
-      data: { status: SeatStatus.RESERVED },
-    });
+    await db.update(seats).set({ status: SeatStatus.RESERVED, updatedAt: new Date() }).where(inArray(seats.id, seatIds));
     const pipeline = redisClient.pipeline();
     for (const seatId of seatIds) {
       pipeline.del(lockKey(seatId));
@@ -112,10 +108,10 @@ export const inventoryService = {
   },
 
   async initSeatsForEvent(eventId: string, rows: string[], seatsPerRow: number): Promise<void> {
-    const existingCount = await prisma.seat.count({ where: { eventId } });
-    if (existingCount > 0) return;
+    const existing = await db.select().from(seats).where(eq(seats.eventId, eventId)).limit(1);
+    if (existing.length > 0) return;
 
-    const seats = rows.flatMap((row) =>
+    const seatRows = rows.flatMap((row) =>
       Array.from({ length: seatsPerRow }, (_, i) => ({
         eventId,
         row,
@@ -124,6 +120,11 @@ export const inventoryService = {
       }))
     );
 
-    await prisma.seat.createMany({ data: seats });
+    await db.insert(seats).values(
+      seatRows.map((seat) => ({
+        id: randomUUID(),
+        ...seat,
+      }))
+    );
   },
 };
