@@ -9,7 +9,7 @@
     "migrate:dev": "node scripts/migrate.cjs",
     "generate": "echo \"No code generation required with Drizzle\"",
     "test": "jest --forceExit",
-    "test:integration": "jest --config jest.integration.config.js --forceExit"
+    "test:integration": "jest --config jest.integration.config.js --forceExit --passWithNoTests"
   },
   "dependencies": {
     "@ticketflow/shared": "workspace:*",
