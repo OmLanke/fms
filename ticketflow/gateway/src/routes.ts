@@ -1,5 +1,5 @@
 import { Express, Request, Response } from 'express';
-import { createProxyMiddleware, Options } from 'http-proxy-middleware';
+import { createProxyMiddleware, fixRequestBody, Options } from 'http-proxy-middleware';
 
 const USER_SERVICE_URL = process.env.USER_SERVICE_URL ?? 'http://localhost:3001';
 const EVENT_SERVICE_URL = process.env.EVENT_SERVICE_URL ?? 'http://localhost:3002';
@@ -11,6 +11,7 @@ function proxy(target: string): ReturnType<typeof createProxyMiddleware> {
   const options: Options = {
     target,
     changeOrigin: true,
+    onProxyReq: fixRequestBody,
     onError: (err: Error, _req: Request, res: Response) => {
       console.error(`Proxy error to ${target}:`, err.message);
       res.status(503).json({

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev:backend": "concurrently \"pnpm --filter gateway run dev\" \"pnpm --filter user-service run dev\" \"pnpm --filter event-service run dev\" \"pnpm --filter booking-service run dev\" \"pnpm --filter inventory-service run dev\" \"pnpm --filter payment-service run dev\" \"pnpm --filter notification-service run dev\"",
+    "dev:backend": "set -a; . ./.env; set +a; concurrently \"pnpm --filter gateway run dev\" \"DATABASE_URL=$USER_DB_URL pnpm --filter user-service run dev\" \"DATABASE_URL=$EVENT_DB_URL pnpm --filter event-service run dev\" \"DATABASE_URL=$BOOKING_DB_URL pnpm --filter booking-service run dev\" \"DATABASE_URL=$INVENTORY_DB_URL pnpm --filter inventory-service run dev\" \"DATABASE_URL=$PAYMENT_DB_URL pnpm --filter payment-service run dev\" \"pnpm --filter notification-service run dev\"",
     "dev:all": "concurrently \"pnpm run dev:backend\" \"pnpm --filter ticketflow-frontend run dev\"",
     "build": "pnpm -r run build",
     "test": "pnpm -r run test",
