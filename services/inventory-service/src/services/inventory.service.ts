@@ -10,16 +10,24 @@ export async function getSeatsByEvent(eventId: string) {
 }
 
 /**
- * Bulk-creates seats for a newly created event.
- * Seats are distributed evenly across `rows` rows (A, B, C…).
+ * Venue layout definition: sections with rows and seat counts.
+ */
+const VENUE_LAYOUT = [
+  { section: "VIP",      rows: ["A", "B"],           seatsPerRow: 10 },
+  { section: "FLOOR",    rows: ["C", "D", "E", "F"], seatsPerRow: 15 },
+  { section: "BALCONY",  rows: ["G", "H", "I"],      seatsPerRow: 12 },
+];
+
+/**
+ * Bulk-creates seats for a newly created event using a fixed venue layout.
+ * Sections: VIP (rows A–B, 10 seats), FLOOR (rows C–F, 15 seats), BALCONY (rows G–I, 12 seats).
+ * Total capacity: 20 + 60 + 36 = 116 seats (capped at totalSeats).
  */
 export async function createSeatsForEvent(
   eventId: string,
   totalSeats: number,
-  rows = 5
+  _rows = 5
 ) {
-  const seatsPerRow = Math.ceil(totalSeats / rows);
-  const rowLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
   const newSeats: {
     id: string;
     eventId: string;
@@ -29,17 +37,22 @@ export async function createSeatsForEvent(
     status: "AVAILABLE";
   }[] = [];
 
-  for (let r = 0; r < rows && newSeats.length < totalSeats; r++) {
-    for (let s = 1; s <= seatsPerRow && newSeats.length < totalSeats; s++) {
-      newSeats.push({
-        id: crypto.randomUUID(),
-        eventId,
-        row: rowLetters[r]!,
-        seatNumber: s.toString(),
-        section: "GENERAL",
-        status: "AVAILABLE",
-      });
+  for (const { section, rows, seatsPerRow } of VENUE_LAYOUT) {
+    for (const row of rows) {
+      for (let s = 1; s <= seatsPerRow; s++) {
+        if (newSeats.length >= totalSeats) break;
+        newSeats.push({
+          id: crypto.randomUUID(),
+          eventId,
+          row,
+          seatNumber: s.toString(),
+          section,
+          status: "AVAILABLE",
+        });
+      }
+      if (newSeats.length >= totalSeats) break;
     }
+    if (newSeats.length >= totalSeats) break;
   }
 
   await db.insert(seats).values(newSeats).onConflictDoNothing();

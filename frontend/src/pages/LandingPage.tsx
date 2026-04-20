@@ -19,7 +19,7 @@ export function LandingPage() {
     const load = async () => {
       try {
         const data = await eventsApi.getAll()
-        setEvents(data.events)
+        setEvents(data.events ?? [])
       } catch {
         setError('Could not load events. Ensure gateway is running on port 3000.')
       } finally {
@@ -34,9 +34,12 @@ export function LandingPage() {
     if (!heroRef.current) return
 
     const timeline = gsap.timeline({ defaults: { ease: 'power3.out' } })
-    timeline
-      .fromTo(heroRef.current.querySelectorAll('.hero-item'), { opacity: 0, y: 24 }, { opacity: 1, y: 0, stagger: 0.12, duration: 0.8 })
-      .fromTo(cardsRef.current?.querySelectorAll('.event-card') ?? [], { opacity: 0, y: 28 }, { opacity: 1, y: 0, stagger: 0.08, duration: 0.6 }, '-=0.35')
+    timeline.fromTo(heroRef.current.querySelectorAll('.hero-item'), { opacity: 0, y: 24 }, { opacity: 1, y: 0, stagger: 0.12, duration: 0.8 })
+
+    const cards = cardsRef.current?.querySelectorAll('.event-card')
+    if (cards && cards.length > 0) {
+      timeline.fromTo(cards, { opacity: 0, y: 28 }, { opacity: 1, y: 0, stagger: 0.08, duration: 0.6 }, '-=0.35')
+    }
 
     return () => {
       timeline.kill()

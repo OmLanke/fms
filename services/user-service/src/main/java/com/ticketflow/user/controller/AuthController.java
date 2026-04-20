@@ -35,9 +35,9 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<UserDTO> getMe(@RequestHeader("x-user-id") String userId) {
+    public ResponseEntity<Map<String, Object>> getMe(@RequestHeader("x-user-id") String userId) {
         UserDTO user = authService.getMe(userId);
-        return ResponseEntity.ok(user);
+        return ResponseEntity.ok(Map.of("user", user));
     }
 
     @GetMapping("/health")
