@@ -1,9 +1,7 @@
-FROM node:20-alpine
+FROM python:3.12-slim
 WORKDIR /app
-RUN npm install -g pnpm
-COPY package.json ./
-RUN pnpm install --frozen-lockfile
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-RUN pnpm run build
 EXPOSE 3005
-CMD ["node", "dist/src/index.js"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3005"]

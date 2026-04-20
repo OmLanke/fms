@@ -1,119 +1,289 @@
-version: '3.9'
+name: ticketflow-prod
+
 services:
+  # ─────────────────────────────────────────────
+  # INFRASTRUCTURE
+  # ─────────────────────────────────────────────
+
   postgres:
-    image: postgres:15
+    image: postgres:16-alpine
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres']
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres}"]
+      interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 5
+    networks:
+      - ticketflow-net
+
+  mongodb:
+    image: mongo:7.0
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+    volumes:
+      - mongodb_data:/data/db
+      - ./infra/mongo/init.js:/docker-entrypoint-initdb.d/init.js
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ticketflow-net
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    command: redis-server --save 60 1 --requirepass ${REDIS_PASSWORD} --loglevel warning
     healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
-  rabbitmq:
-    image: rabbitmq:3-management
-    environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
-    healthcheck:
-      test: ['CMD', 'rabbitmq-diagnostics', 'ping']
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - ticketflow-net
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.7.0
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_logs:/var/lib/zookeeper/log
+    networks:
+      - ticketflow-net
+
+  kafka:
+    image: confluentinc/cp-kafka:7.7.0
+    restart: unless-stopped
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_LOG_RETENTION_HOURS: 168
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list"]
+      interval: 15s
       timeout: 10s
       retries: 10
+    networks:
+      - ticketflow-net
+
+  kafka-init:
+    image: confluentinc/cp-kafka:7.7.0
+    depends_on:
+      kafka:
+        condition: service_healthy
+    volumes:
+      - ./infra/kafka/create-topics.sh:/create-topics.sh
+    command: ["bash", "/create-topics.sh"]
+    environment:
+      KAFKA_BROKER: kafka:9092
+      REPLICATION_FACTOR: 1
+    networks:
+      - ticketflow-net
+
+  # ─────────────────────────────────────────────
+  # APPLICATION SERVICES
+  # ─────────────────────────────────────────────
 
   gateway:
-    build: ./gateway
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    restart: unless-stopped
     ports:
-      - '3000:3000'
+      - "3000:3000"
     environment:
-      - JWT_SECRET=${JWT_SECRET}
-      - USER_SERVICE_URL=http://user-service:3001
-      - EVENT_SERVICE_URL=http://event-service:3002
-      - BOOKING_SERVICE_URL=http://booking-service:3003
-      - INVENTORY_SERVICE_URL=http://inventory-service:3004
-      - PAYMENT_SERVICE_URL=http://payment-service:3005
+      PORT: 3000
+      JWT_SECRET: ${JWT_SECRET}
+      USER_SERVICE_URL: http://user-service:3001
+      EVENT_SERVICE_URL: http://event-service:3002
+      BOOKING_SERVICE_URL: http://booking-service:3003
+      INVENTORY_SERVICE_URL: http://inventory-service:3004
+      PAYMENT_SERVICE_URL: http://payment-service:3005
+      NOTIFICATION_SERVICE_URL: http://notification-service:3006
     depends_on:
       - user-service
       - event-service
       - booking-service
       - inventory-service
       - payment-service
+      - notification-service
+    networks:
+      - ticketflow-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   user-service:
-    build: ./services/user-service
+    build:
+      context: ./services/user-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
     environment:
-      - DATABASE_URL=${USER_DB_URL}
-      - JWT_SECRET=${JWT_SECRET}
+      PORT: 3001
+      USER_DB_URL: jdbc:postgresql://postgres:5432/ticketflow_users
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JWT_SECRET: ${JWT_SECRET}
     depends_on:
       postgres:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - ticketflow-net
 
   event-service:
-    build: ./services/event-service
+    build:
+      context: ./services/event-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
     environment:
-      - DATABASE_URL=${EVENT_DB_URL}
-      - JWT_SECRET=${JWT_SECRET}
+      PORT: 3002
+      MONGODB_URL: mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@mongodb:27017
+      MONGODB_DB: ticketflow_events
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
-      postgres:
+      mongodb:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - ticketflow-net
 
   booking-service:
-    build: ./services/booking-service
+    build:
+      context: ./services/booking-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
     environment:
-      - DATABASE_URL=${BOOKING_DB_URL}
-      - JWT_SECRET=${JWT_SECRET}
-      - RABBITMQ_URL=${RABBITMQ_URL}
-      - INVENTORY_SERVICE_URL=http://inventory-service:3004
-      - PAYMENT_SERVICE_URL=http://payment-service:3005
-      - EVENT_SERVICE_URL=http://event-service:3002
-      - USER_SERVICE_URL=http://user-service:3001
+      PORT: 3003
+      BOOKING_DB_URL: jdbc:postgresql://postgres:5432/ticketflow_bookings
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
       postgres:
         condition: service_healthy
-      rabbitmq:
+      kafka:
         condition: service_healthy
+    networks:
+      - ticketflow-net
 
   inventory-service:
-    build: ./services/inventory-service
+    build:
+      context: ./services/inventory-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
     environment:
-      - DATABASE_URL=${INVENTORY_DB_URL}
-      - REDIS_URL=${REDIS_URL}
+      PORT: 3004
+      INVENTORY_DB_URL: postgresql://${DB_USERNAME}:${DB_PASSWORD}@postgres:5432/ticketflow_inventory
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - ticketflow-net
 
   payment-service:
-    build: ./services/payment-service
+    build:
+      context: ./services/payment-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
     environment:
-      - DATABASE_URL=${PAYMENT_DB_URL}
-      - PAYMENT_SUCCESS_RATE=${PAYMENT_SUCCESS_RATE:-0.95}
+      PORT: 3005
+      MONGODB_URL: mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@mongodb:27017
+      MONGODB_DB: ticketflow_payments
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      PAYMENT_SUCCESS_RATE: ${PAYMENT_SUCCESS_RATE:-0.95}
     depends_on:
-      postgres:
+      mongodb:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - ticketflow-net
 
   notification-service:
-    build: ./services/notification-service
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
     environment:
-      - RABBITMQ_URL=${RABBITMQ_URL}
-      - SMTP_HOST=${SMTP_HOST}
-      - SMTP_PORT=${SMTP_PORT}
+      PORT: 3006
+      MONGODB_URL: mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@mongodb:27017
+      MONGODB_DB: ticketflow_notifications
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_FROM: ${SMTP_FROM:-noreply@ticketflow.com}
+      SMTP_USERNAME: ${SMTP_USERNAME}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
     depends_on:
-      rabbitmq:
+      mongodb:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - ticketflow-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    environment:
+      VITE_API_BASE_URL: ${FRONTEND_API_URL:-https://api.yourdomain.com}
+    depends_on:
+      - gateway
+    networks:
+      - ticketflow-net
 
 volumes:
   postgres_data:
+  mongodb_data:
+  redis_data:
+  kafka_data:
+  zookeeper_data:
+  zookeeper_logs:
+
+networks:
+  ticketflow-net:
+    driver: bridge

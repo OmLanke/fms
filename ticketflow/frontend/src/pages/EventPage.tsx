@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
-import { bookingsApi, Event, eventsApi, inventoryApi, Seat } from '@/lib/api'
+import { bookingsApi, Event, eventsApi, inventoryApi, pollBookingStatus, Seat } from '@/lib/api'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+
+type BookingPhase = 'idle' | 'submitting' | 'polling' | 'done'
 
 export function EventPage() {
   const { id } = useParams()
@@ -16,7 +18,7 @@ export function EventPage() {
   const [seats, setSeats] = useState<Seat[]>([])
   const [selected, setSelected] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
+  const [phase, setPhase] = useState<BookingPhase>('idle')
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -54,17 +56,38 @@ export function EventPage() {
       return
     }
 
-    setSubmitting(true)
+    setPhase('submitting')
     setError(null)
 
     try {
-      await bookingsApi.create({ eventId: id, seatIds: selected })
-      navigate('/bookings')
-    } catch {
-      setError('Booking failed. The selected seats may have been taken.')
-    } finally {
-      setSubmitting(false)
+      // POST /bookings → 202 Accepted
+      const { bookingId } = await bookingsApi.create({ eventId: id, seatIds: selected })
+
+      // Poll until booking leaves PENDING state
+      setPhase('polling')
+      const booking = await pollBookingStatus(bookingId)
+
+      if (booking.status === 'CONFIRMED') {
+        setPhase('done')
+        navigate('/bookings')
+      } else {
+        setPhase('idle')
+        setError('Booking could not be confirmed. The seats may have been taken or payment failed.')
+      }
+    } catch (err: unknown) {
+      setPhase('idle')
+      if (err instanceof Error) {
+        setError(err.message)
+      } else {
+        setError('Booking failed. Please try again.')
+      }
     }
+  }
+
+  const submitLabel = () => {
+    if (phase === 'submitting') return 'Placing order...'
+    if (phase === 'polling') return 'Confirming...'
+    return 'Confirm Booking'
   }
 
   if (loading) {
@@ -100,9 +123,11 @@ export function EventPage() {
           <CardContent className="grid grid-cols-5 gap-2 md:grid-cols-10">
             {seats.map((seat) => {
               const isSelected = selected.includes(seat.id)
-              const disabled = seat.status !== 'AVAILABLE'
+              const disabled = seat.status !== 'AVAILABLE' || busy
 
-              return (
+  const busy = phase === 'submitting' || phase === 'polling'
+
+  return (
                 <button
                   key={seat.id}
                   type="button"
@@ -133,8 +158,11 @@ export function EventPage() {
             <div className="text-sm text-muted-foreground">Price per seat: {formatCurrency(event.price)}</div>
             <div className="text-lg font-semibold text-primary">Total: {formatCurrency(total)}</div>
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
-            <Button className="w-full" disabled={selected.length === 0 || submitting} onClick={createBooking}>
-              {submitting ? 'Booking...' : 'Confirm Booking'}
+            {phase === 'polling' && (
+              <p className="text-sm text-muted-foreground">Processing payment — this may take a moment...</p>
+            )}
+            <Button className="w-full" disabled={selected.length === 0 || busy} onClick={createBooking}>
+              {submitLabel()}
             </Button>
           </CardContent>
         </Card>
