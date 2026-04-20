@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Booking Confirmed – TicketFlow</title>
+  <style>
+    body { margin: 0; padding: 0; background-color: #f4f6fb; font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a2e; }
+    .wrapper { max-width: 620px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.10); }
+    .header { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); padding: 40px 48px 36px; text-align: center; }
+    .header .logo { font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px; }
+    .header .logo span { color: #c4b5fd; }
+    .header h1 { margin: 18px 0 0; font-size: 28px; color: #ffffff; font-weight: 700; }
+    .header .checkmark { display: inline-block; width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 50%; line-height: 56px; font-size: 28px; margin-bottom: 8px; }
+    .body { padding: 40px 48px; }
+    .greeting { font-size: 17px; color: #374151; margin-bottom: 24px; }
+    .details-card { background: #f8f7ff; border: 1px solid #e0d9ff; border-radius: 8px; padding: 24px; margin-bottom: 28px; }
+    .details-card h2 { font-size: 14px; font-weight: 700; color: #6d28d9; text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 16px; }
+    table.details { width: 100%; border-collapse: collapse; }
+    table.details tr td { padding: 8px 0; font-size: 15px; }
+    table.details tr td:first-child { color: #6b7280; width: 45%; }
+    table.details tr td:last-child { color: #111827; font-weight: 600; }
+    table.details tr + tr td { border-top: 1px solid #ede9fe; }
+    .seats-card { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 24px; margin-bottom: 28px; }
+    .seats-card h2 { font-size: 14px; font-weight: 700; color: #15803d; text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 16px; }
+    .seat-badge { display: inline-block; background: #dcfce7; border: 1px solid #86efac; color: #166534; border-radius: 6px; padding: 6px 14px; font-size: 14px; font-weight: 600; margin: 4px; }
+    .total-row { display: flex; justify-content: space-between; align-items: center; background: #4f46e5; border-radius: 8px; padding: 16px 24px; margin-bottom: 32px; }
+    .total-row .label { color: #c4b5fd; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+    .total-row .amount { color: #ffffff; font-size: 24px; font-weight: 800; }
+    .cta { text-align: center; margin-bottom: 32px; }
+    .cta a { display: inline-block; background: linear-gradient(135deg, #4f46e5, #7c3aed); color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 700; padding: 14px 36px; border-radius: 8px; letter-spacing: 0.02em; }
+    .footer { background: #f9fafb; border-top: 1px solid #e5e7eb; padding: 24px 48px; text-align: center; }
+    .footer p { margin: 4px 0; font-size: 13px; color: #9ca3af; }
+    .footer a { color: #6d28d9; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <div class="logo">Ticket<span>Flow</span></div>
+      <div class="checkmark">✓</div>
+      <h1>Booking Confirmed!</h1>
+    </div>
+    <div class="body">
+      <p class="greeting">Hi <strong>{{ user_name }}</strong>, your booking is confirmed. Get ready for an unforgettable experience!</p>
+
+      <div class="details-card">
+        <h2>Booking Details</h2>
+        <table class="details">
+          <tr>
+            <td>Booking ID</td>
+            <td>{{ booking_id }}</td>
+          </tr>
+          <tr>
+            <td>Event</td>
+            <td>{{ event_name }}</td>
+          </tr>
+          <tr>
+            <td>Date</td>
+            <td>{{ event_date }}</td>
+          </tr>
+          <tr>
+            <td>Seats</td>
+            <td>{{ seats | length }} seat(s)</td>
+          </tr>
+        </table>
+      </div>
+
+      {% if seats %}
+      <div class="seats-card">
+        <h2>Your Tickets</h2>
+        {% for seat in seats %}
+        <span class="seat-badge">{{ seat }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <div class="total-row">
+        <span class="label">Total Charged</span>
+        <span class="amount">${{ "%.2f" | format(total_amount | float) }}</span>
+      </div>
+
+      <div class="cta">
+        <a href="https://ticketflow.com/bookings/{{ booking_id }}">View My Booking</a>
+      </div>
+    </div>
+    <div class="footer">
+      <p>Questions? <a href="mailto:support@ticketflow.com">support@ticketflow.com</a></p>
+      <p>© 2025 TicketFlow Inc. · <a href="https://ticketflow.com/unsubscribe">Unsubscribe</a></p>
+    </div>
+  </div>
+</body>
+</html>

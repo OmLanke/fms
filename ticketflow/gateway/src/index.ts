@@ -1,8 +1,9 @@
-import 'dotenv/config';
-import { app } from './app';
+import { createApp } from "./app";
+import { config } from "./config";
 
-const PORT = process.env.PORT ?? 3000;
+const app = createApp();
 
-app.listen(PORT, () => {
-  console.log(`API Gateway listening on port ${PORT}`);
+app.listen(config.port, () => {
+  console.log(`[Gateway] Running on port ${config.port}`);
+  console.log(`[Gateway] Routing to:`, config.services);
 });

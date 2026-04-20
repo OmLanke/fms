@@ -1,29 +1,22 @@
-import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-import { JwtPayload } from '@ticketflow/shared';
+import { decodeJwt } from "jose";
 
-export function gatewayAuth(req: Request, res: Response, next: NextFunction): void {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
-    next();
-    return;
-  }
+export interface AuthPayload {
+  userId: string;
+  email: string;
+  role: string;
+}
 
+export function decodeToken(authHeader: string | null): AuthPayload | null {
+  if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
   const token = authHeader.slice(7);
-  const secret = process.env.JWT_SECRET;
-  if (!secret) {
-    next();
-    return;
-  }
-
   try {
-    const decoded = jwt.verify(token, secret) as JwtPayload;
-    req.headers['x-user-id'] = decoded.sub;
-    req.headers['x-user-email'] = decoded.email;
-    req.headers['x-user-role'] = decoded.role;
+    const payload = decodeJwt(token);
+    return {
+      userId: payload.sub as string,
+      email: payload.email as string,
+      role: (payload.role as string) || "USER",
+    };
   } catch {
-    // Invalid token — let downstream services handle it
+    return null;
   }
-
-  next();
 }

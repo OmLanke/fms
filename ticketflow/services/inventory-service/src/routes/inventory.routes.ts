@@ -1,16 +1,27 @@
-import { Router } from 'express';
-import { validate } from '@ticketflow/shared';
-import {
-  getSeatsByEvent,
-  lockSeats,
-  releaseSeats,
-  confirmSeats,
-} from '../controllers/inventory.controller';
-import { lockSeatsSchema, releaseSeatsSchema, confirmSeatsSchema } from '../schemas/inventory.schema';
+import Elysia from "elysia";
+import { getSeatsByEvent } from "../services/inventory.service";
 
-export const inventoryRouter = Router();
+export const inventoryRoutes = new Elysia()
+  // List all seats for an event
+  .get("/api/inventory/events/:eventId/seats", async ({ params, set }) => {
+    try {
+      const seatList = await getSeatsByEvent(params.eventId);
+      return { seats: seatList, total: seatList.length };
+    } catch (err) {
+      console.error("[Route] GET seats error:", err);
+      set.status = 500;
+      return {
+        error: {
+          code: "INTERNAL_ERROR",
+          message: "Failed to fetch seats",
+        },
+      };
+    }
+  })
 
-inventoryRouter.get('/events/:eventId/seats', getSeatsByEvent);
-inventoryRouter.post('/lock', validate(lockSeatsSchema), lockSeats);
-inventoryRouter.post('/release', validate(releaseSeatsSchema), releaseSeats);
-inventoryRouter.post('/confirm', validate(confirmSeatsSchema), confirmSeats);
+  // Health check
+  .get("/health", () => ({
+    status: "up",
+    service: "inventory-service",
+    timestamp: new Date().toISOString(),
+  }));

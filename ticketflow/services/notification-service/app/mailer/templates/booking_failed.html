@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Booking Failed – TicketFlow</title>
+  <style>
+    body { margin: 0; padding: 0; background-color: #f4f6fb; font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a2e; }
+    .wrapper { max-width: 620px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.10); }
+    .header { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); padding: 40px 48px 36px; text-align: center; }
+    .header .logo { font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px; }
+    .header .logo span { color: #fca5a5; }
+    .header .icon { display: inline-block; width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 50%; line-height: 56px; font-size: 28px; margin-bottom: 8px; }
+    .header h1 { margin: 18px 0 0; font-size: 28px; color: #ffffff; font-weight: 700; }
+    .body { padding: 40px 48px; }
+    .message { font-size: 16px; color: #374151; line-height: 1.6; margin-bottom: 28px; }
+    .info-card { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 24px; margin-bottom: 28px; }
+    .info-card h2 { font-size: 14px; font-weight: 700; color: #991b1b; text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 12px; }
+    .info-card table { width: 100%; border-collapse: collapse; }
+    .info-card table tr td { padding: 8px 0; font-size: 15px; }
+    .info-card table tr td:first-child { color: #6b7280; width: 40%; }
+    .info-card table tr td:last-child { color: #111827; font-weight: 600; }
+    .info-card table tr + tr td { border-top: 1px solid #fee2e2; }
+    .reason-box { background: #fff7ed; border-left: 4px solid #f97316; border-radius: 0 8px 8px 0; padding: 16px 20px; margin-bottom: 28px; font-size: 15px; color: #9a3412; }
+    .reason-box strong { display: block; margin-bottom: 4px; }
+    .cta { text-align: center; margin-bottom: 32px; }
+    .cta a { display: inline-block; background: linear-gradient(135deg, #4f46e5, #7c3aed); color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 700; padding: 14px 36px; border-radius: 8px; letter-spacing: 0.02em; }
+    .footer { background: #f9fafb; border-top: 1px solid #e5e7eb; padding: 24px 48px; text-align: center; }
+    .footer p { margin: 4px 0; font-size: 13px; color: #9ca3af; }
+    .footer a { color: #6d28d9; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <div class="logo">Ticket<span>Flow</span></div>
+      <div class="icon">✕</div>
+      <h1>Booking Failed</h1>
+    </div>
+    <div class="body">
+      <p class="message">
+        We're sorry, but we were unable to complete your booking. No charges have been applied to your account.
+        Please review the details below and try again.
+      </p>
+
+      <div class="info-card">
+        <h2>Booking Reference</h2>
+        <table>
+          <tr>
+            <td>Booking ID</td>
+            <td>{{ booking_id }}</td>
+          </tr>
+          <tr>
+            <td>Account</td>
+            <td>{{ user_email }}</td>
+          </tr>
+        </table>
+      </div>
+
+      {% if reason %}
+      <div class="reason-box">
+        <strong>Reason for failure:</strong>
+        {{ reason }}
+      </div>
+      {% endif %}
+
+      <div class="cta">
+        <a href="https://ticketflow.com/events">Try Again</a>
+      </div>
+    </div>
+    <div class="footer">
+      <p>If you believe this is an error, please contact <a href="mailto:support@ticketflow.com">support@ticketflow.com</a></p>
+      <p>© 2025 TicketFlow Inc. · <a href="https://ticketflow.com/unsubscribe">Unsubscribe</a></p>
+    </div>
+  </div>
+</body>
+</html>
