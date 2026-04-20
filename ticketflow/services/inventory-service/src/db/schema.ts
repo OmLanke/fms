@@ -1,19 +1,24 @@
-import { pgEnum, pgTable, text, timestamp, unique } from 'drizzle-orm/pg-core'
+import { pgTable, text, timestamp, pgEnum, unique } from "drizzle-orm/pg-core";
 
-export const seatStatusEnum = pgEnum('SeatStatus', ['AVAILABLE', 'LOCKED', 'RESERVED'])
+export const seatStatusEnum = pgEnum("seat_status", ["AVAILABLE", "LOCKED", "RESERVED"]);
 
 export const seats = pgTable(
-  'Seat',
+  "seats",
   {
-    id: text('id').primaryKey(),
-    eventId: text('eventId').notNull(),
-    seatNumber: text('seatNumber').notNull(),
-    row: text('row').notNull(),
-    status: seatStatusEnum('status').notNull().default('AVAILABLE'),
-    createdAt: timestamp('createdAt', { withTimezone: false }).notNull().defaultNow(),
-    updatedAt: timestamp('updatedAt', { withTimezone: false }).notNull().defaultNow(),
+    id: text("id").primaryKey(),
+    eventId: text("event_id").notNull(),
+    seatNumber: text("seat_number").notNull(),
+    row: text("row").notNull(),
+    section: text("section").default("GENERAL"),
+    status: seatStatusEnum("status").default("AVAILABLE").notNull(),
+    bookingId: text("booking_id"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => ({
-    eventRowSeatUnique: unique('Seat_eventId_row_seatNumber_key').on(table.eventId, table.row, table.seatNumber),
+    uniqueSeat: unique().on(table.eventId, table.row, table.seatNumber),
   })
-)
+);
+
+export type Seat = typeof seats.$inferSelect;
+export type NewSeat = typeof seats.$inferInsert;

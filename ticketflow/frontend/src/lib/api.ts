@@ -70,6 +70,13 @@ export interface Booking {
   updatedAt: string
 }
 
+// Returned immediately from POST /bookings (202 Accepted)
+export interface BookingAccepted {
+  bookingId: string
+  status: 'PENDING'
+  message: string
+}
+
 // Auth API
 export const authApi = {
   register: async (data: { name: string; email: string; password: string }) => {
@@ -108,8 +115,14 @@ export const inventoryApi = {
 
 // Bookings API
 export const bookingsApi = {
-  create: async (data: { eventId: string; seatIds: string[] }) => {
-    const res = await api.post<{ booking: Booking }>('/bookings', data)
+  /**
+   * Initiates a booking. Returns 202 Accepted immediately.
+   * Use `pollBookingStatus` to wait for the final status.
+   */
+  create: async (data: { eventId: string; seatIds: string[] }): Promise<BookingAccepted> => {
+    const res = await api.post<BookingAccepted>('/bookings', data, {
+      validateStatus: (status) => status === 202,
+    })
     return res.data
   },
   getMyBookings: async () => {
@@ -117,11 +130,32 @@ export const bookingsApi = {
     return res.data
   },
   getById: async (id: string) => {
-    const res = await api.get<{ booking: Booking }>(`/bookings/${id}`)
+    const res = await api.get<Booking>(`/bookings/${id}`)
     return res.data
   },
   cancel: async (id: string) => {
-    const res = await api.post<{ booking: Booking }>(`/bookings/${id}/cancel`)
+    const res = await api.post<Booking>(`/bookings/${id}/cancel`)
     return res.data
   },
+}
+
+const POLL_INTERVAL_MS = 1500
+const POLL_TIMEOUT_MS = 30_000
+
+/**
+ * Polls GET /bookings/:id every 1.5s until the booking leaves PENDING state,
+ * or until the 30-second timeout is reached.
+ */
+export async function pollBookingStatus(bookingId: string): Promise<Booking> {
+  const deadline = Date.now() + POLL_TIMEOUT_MS
+
+  while (Date.now() < deadline) {
+    const booking = await bookingsApi.getById(bookingId)
+    if (booking.status !== 'PENDING') {
+      return booking
+    }
+    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS))
+  }
+
+  throw new Error('Booking confirmation timed out. Check "My Bookings" for the final status.')
 }

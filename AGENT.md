@@ -344,7 +344,7 @@ model BookingItem {
 - postgres:15        # single instance, multiple databases via init scripts
 - redis:7-alpine
 - rabbitmq:3-management  # exposes :5672 and :15672 (management UI)
-- mailhog/mailhog         # SMTP mock, UI at :8025
+- axllent/mailpit        # SMTP mock, UI at :8025
 ```
 
 ---
