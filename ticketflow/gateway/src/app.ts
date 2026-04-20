@@ -49,6 +49,7 @@ export const createApp = () => {
             const res = await fetch(`${url}/health`, {
               signal: AbortSignal.timeout(2000),
             });
+            if (!res.ok) return { name, status: "down" };
             const data = await res.json();
             return { name, status: "up", ...data };
           } catch {

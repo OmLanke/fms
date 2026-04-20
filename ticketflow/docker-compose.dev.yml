@@ -72,9 +72,9 @@ services:
       - zookeeper_data:/var/lib/zookeeper/data
       - zookeeper_logs:/var/lib/zookeeper/log
     healthcheck:
-      test: ["CMD-SHELL", "echo ruok | nc localhost 2181 | grep imok"]
+      test: ["CMD-SHELL", "/usr/local/bin/cub zk-ready localhost:2181 10 2>/dev/null"]
       interval: 10s
-      timeout: 5s
+      timeout: 15s
       retries: 5
     networks:
       - ticketflow-net
@@ -103,7 +103,7 @@ services:
     volumes:
       - kafka_data:/var/lib/kafka/data
     healthcheck:
-      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list"]
+      test: ["CMD-SHELL", "/usr/bin/kafka-topics --bootstrap-server localhost:9092 --list"]
       interval: 15s
       timeout: 10s
       retries: 10
@@ -204,7 +204,7 @@ services:
     networks:
       - ticketflow-net
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -230,7 +230,7 @@ services:
     networks:
       - ticketflow-net
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3001/api/users/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/api/users/health || exit 1"]
       interval: 20s
       timeout: 10s
       retries: 5
@@ -253,7 +253,7 @@ services:
     networks:
       - ticketflow-net
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3002/health || exit 1"]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:3002/health')\" || exit 1"]
       interval: 20s
       timeout: 10s
       retries: 5
@@ -277,7 +277,7 @@ services:
     networks:
       - ticketflow-net
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3003/api/bookings/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3003/api/bookings/health || exit 1"]
       interval: 20s
       timeout: 10s
       retries: 5
@@ -302,7 +302,7 @@ services:
     networks:
       - ticketflow-net
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3004/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3004/health || exit 1"]
       interval: 20s
       timeout: 10s
       retries: 5
@@ -326,7 +326,7 @@ services:
     networks:
       - ticketflow-net
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3005/health || exit 1"]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:3005/health')\" || exit 1"]
       interval: 20s
       timeout: 10s
       retries: 5
@@ -352,11 +352,11 @@ services:
       kafka:
         condition: service_healthy
       mailpit:
-        - service_started
+        condition: service_started
     networks:
       - ticketflow-net
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3006/health || exit 1"]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:3006/health')\" || exit 1"]
       interval: 20s
       timeout: 10s
       retries: 5
