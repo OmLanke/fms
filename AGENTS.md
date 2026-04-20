@@ -1,13 +1,12 @@
 # AGENTS.md
 
-All real work lives in `ticketflow/`. Run every `make` command from there.
+Run every `make` command from the repo root.
 
 ---
 
 ## Quick start
 
 ```bash
-cd ticketflow
 make setup      # copies .env.example → .env (safe to re-run)
 make dev        # builds + starts full stack in Docker
 make health     # verify all services are up via gateway aggregate
