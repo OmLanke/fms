@@ -90,6 +90,8 @@ export function EventPage() {
     return 'Confirm Booking'
   }
 
+  const busy = phase === 'submitting' || phase === 'polling'
+
   if (loading) {
     return <main className="mx-auto max-w-7xl px-4 py-10 md:px-6">Loading event...</main>
   }
@@ -125,9 +127,7 @@ export function EventPage() {
               const isSelected = selected.includes(seat.id)
               const disabled = seat.status !== 'AVAILABLE' || busy
 
-  const busy = phase === 'submitting' || phase === 'polling'
-
-  return (
+              return (
                 <button
                   key={seat.id}
                   type="button"
