@@ -4,10 +4,12 @@ Run with: python -m app.seed
 """
 
 import asyncio
+import json
 import logging
 from datetime import datetime
 from motor.motor_asyncio import AsyncIOMotorClient
 from beanie import init_beanie
+from aiokafka import AIOKafkaProducer
 
 from app.config import settings
 from app.models.event import VenueDocument, EventDocument
@@ -70,8 +72,8 @@ async def seed():
             },
             date=datetime(2025, 6, 15, 20, 0, 0),
             price=75.0,
-            total_seats=500,
-            available_seats=500,
+            total_seats=120,
+            available_seats=120,
             tags=["rock", "live", "music"],
         ),
         EventDocument(
@@ -88,8 +90,8 @@ async def seed():
             },
             date=datetime(2025, 7, 20, 19, 0, 0),
             price=55.0,
-            total_seats=500,
-            available_seats=500,
+            total_seats=100,
+            available_seats=100,
             tags=["jazz", "blues", "festival"],
         ),
         EventDocument(
@@ -106,14 +108,41 @@ async def seed():
             },
             date=datetime(2025, 8, 10, 18, 30, 0),
             price=95.0,
-            total_seats=200,
-            available_seats=200,
+            total_seats=80,
+            available_seats=80,
             tags=["classical", "symphony", "orchestra"],
         ),
     ]
     for event in events_data:
         await event.insert()
         logger.info(f"Created event: {event.name} (id={event.id})")
+
+    # --- Publish ticketflow.event.created for each event so inventory-service creates seats ---
+    producer = AIOKafkaProducer(
+        bootstrap_servers=settings.kafka_bootstrap_servers,
+        value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+        key_serializer=lambda k: k.encode("utf-8") if k else None,
+    )
+    await producer.start()
+    try:
+        for event in events_data:
+            payload = {
+                "eventType": "event.created",
+                "eventId": str(event.id),
+                "name": event.name,
+                "totalSeats": event.total_seats,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+            await producer.send_and_wait(
+                "ticketflow.event.created",
+                value=payload,
+                key=str(event.id),
+            )
+            logger.info(
+                f"Published event.created for: {event.name} (totalSeats={event.total_seats})"
+            )
+    finally:
+        await producer.stop()
 
     logger.info("Seed complete.")
     client.close()

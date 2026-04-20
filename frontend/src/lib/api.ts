@@ -53,28 +53,22 @@ export interface Seat {
   status: 'AVAILABLE' | 'LOCKED' | 'RESERVED'
 }
 
-export interface BookingItem {
-  id: string
-  bookingId: string
-  seatId: string
-}
 
 export interface Booking {
   id: string
   userId: string
   eventId: string
+  eventName: string
   status: 'PENDING' | 'CONFIRMED' | 'FAILED' | 'CANCELLED'
   totalAmount: number
-  items: BookingItem[]
+  seatIds: string[]
   createdAt: string
-  updatedAt: string
 }
 
 // Returned immediately from POST /bookings (202 Accepted)
 export interface BookingAccepted {
-  bookingId: string
+  id: string
   status: 'PENDING'
-  message: string
 }
 
 // Auth API
@@ -100,7 +94,7 @@ export const eventsApi = {
     return res.data
   },
   getById: async (id: string) => {
-    const res = await api.get<{ event: Event }>(`/events/${id}`)
+    const res = await api.get<Event>(`/events/${id}`)
     return res.data
   },
 }
@@ -119,7 +113,7 @@ export const bookingsApi = {
    * Initiates a booking. Returns 202 Accepted immediately.
    * Use `pollBookingStatus` to wait for the final status.
    */
-  create: async (data: { eventId: string; seatIds: string[] }): Promise<BookingAccepted> => {
+  create: async (data: { eventId: string; eventName: string; seatIds: string[]; totalAmount: number }): Promise<BookingAccepted> => {
     const res = await api.post<BookingAccepted>('/bookings', data, {
       validateStatus: (status) => status === 202,
     })

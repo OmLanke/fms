@@ -20,7 +20,7 @@ export function BookingsPage() {
     const load = async () => {
       try {
         const data = await bookingsApi.getMyBookings()
-        setBookings(data.bookings)
+        setBookings(Array.isArray(data) ? data : (data.bookings ?? []))
       } catch {
         setError('Unable to load your bookings right now.')
       } finally {
@@ -50,8 +50,8 @@ export function BookingsPage() {
               <Badge variant={statusVariant(booking.status)}>{booking.status}</Badge>
             </CardHeader>
             <CardContent className="grid gap-2 text-sm text-muted-foreground md:grid-cols-3">
-              <div>Event ID: {booking.eventId}</div>
-              <div>Seats: {booking.items.length}</div>
+              <div>Event: {booking.eventName}</div>
+              <div>Seats: {booking.seatIds.length}</div>
               <div className="font-semibold text-primary">{formatCurrency(booking.totalAmount)}</div>
             </CardContent>
           </Card>

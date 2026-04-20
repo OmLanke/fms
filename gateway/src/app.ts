@@ -66,6 +66,15 @@ export const createApp = () => {
     })
 
     // User Service routes
+    .all("/api/users", async ({ request }) => {
+      const ip = getIp(request);
+      if (!checkRateLimit(ip, config.rateLimit.maxRequests, config.rateLimit.windowMs)) {
+        return rateLimitedError();
+      }
+      const url = new URL(request.url);
+      const targetUrl = `${config.services.user}${url.pathname}${url.search}`;
+      return proxyRequest(targetUrl, request, getAuthHeaders(request));
+    })
     .all("/api/users/*", async ({ request }) => {
       const ip = getIp(request);
       if (!checkRateLimit(ip, config.rateLimit.maxRequests, config.rateLimit.windowMs)) {
@@ -77,6 +86,15 @@ export const createApp = () => {
     })
 
     // Event Service routes
+    .all("/api/events", async ({ request }) => {
+      const ip = getIp(request);
+      if (!checkRateLimit(ip, config.rateLimit.maxRequests, config.rateLimit.windowMs)) {
+        return rateLimitedError();
+      }
+      const url = new URL(request.url);
+      const targetUrl = `${config.services.event}${url.pathname}${url.search}`;
+      return proxyRequest(targetUrl, request, getAuthHeaders(request));
+    })
     .all("/api/events/*", async ({ request }) => {
       const ip = getIp(request);
       if (!checkRateLimit(ip, config.rateLimit.maxRequests, config.rateLimit.windowMs)) {
@@ -88,6 +106,15 @@ export const createApp = () => {
     })
 
     // Venues → Event Service
+    .all("/api/venues", async ({ request }) => {
+      const ip = getIp(request);
+      if (!checkRateLimit(ip, config.rateLimit.maxRequests, config.rateLimit.windowMs)) {
+        return rateLimitedError();
+      }
+      const url = new URL(request.url);
+      const targetUrl = `${config.services.event}${url.pathname}${url.search}`;
+      return proxyRequest(targetUrl, request, getAuthHeaders(request));
+    })
     .all("/api/venues/*", async ({ request }) => {
       const ip = getIp(request);
       if (!checkRateLimit(ip, config.rateLimit.maxRequests, config.rateLimit.windowMs)) {
@@ -99,6 +126,15 @@ export const createApp = () => {
     })
 
     // Booking Service routes
+    .all("/api/bookings", async ({ request }) => {
+      const ip = getIp(request);
+      if (!checkRateLimit(ip, config.rateLimit.maxRequests, config.rateLimit.windowMs)) {
+        return rateLimitedError();
+      }
+      const url = new URL(request.url);
+      const targetUrl = `${config.services.booking}${url.pathname}${url.search}`;
+      return proxyRequest(targetUrl, request, getAuthHeaders(request));
+    })
     .all("/api/bookings/*", async ({ request }) => {
       const ip = getIp(request);
       if (!checkRateLimit(ip, config.rateLimit.maxRequests, config.rateLimit.windowMs)) {
@@ -110,6 +146,15 @@ export const createApp = () => {
     })
 
     // Inventory Service routes
+    .all("/api/inventory", async ({ request }) => {
+      const ip = getIp(request);
+      if (!checkRateLimit(ip, config.rateLimit.maxRequests, config.rateLimit.windowMs)) {
+        return rateLimitedError();
+      }
+      const url = new URL(request.url);
+      const targetUrl = `${config.services.inventory}${url.pathname}${url.search}`;
+      return proxyRequest(targetUrl, request, getAuthHeaders(request));
+    })
     .all("/api/inventory/*", async ({ request }) => {
       const ip = getIp(request);
       if (!checkRateLimit(ip, config.rateLimit.maxRequests, config.rateLimit.windowMs)) {
@@ -121,6 +166,15 @@ export const createApp = () => {
     })
 
     // Payment Service routes
+    .all("/api/payments", async ({ request }) => {
+      const ip = getIp(request);
+      if (!checkRateLimit(ip, config.rateLimit.maxRequests, config.rateLimit.windowMs)) {
+        return rateLimitedError();
+      }
+      const url = new URL(request.url);
+      const targetUrl = `${config.services.payment}${url.pathname}${url.search}`;
+      return proxyRequest(targetUrl, request, getAuthHeaders(request));
+    })
     .all("/api/payments/*", async ({ request }) => {
       const ip = getIp(request);
       if (!checkRateLimit(ip, config.rateLimit.maxRequests, config.rateLimit.windowMs)) {
@@ -132,6 +186,15 @@ export const createApp = () => {
     })
 
     // Notification Service routes
+    .all("/api/notifications", async ({ request }) => {
+      const ip = getIp(request);
+      if (!checkRateLimit(ip, config.rateLimit.maxRequests, config.rateLimit.windowMs)) {
+        return rateLimitedError();
+      }
+      const url = new URL(request.url);
+      const targetUrl = `${config.services.notification}${url.pathname}${url.search}`;
+      return proxyRequest(targetUrl, request, getAuthHeaders(request));
+    })
     .all("/api/notifications/*", async ({ request }) => {
       const ip = getIp(request);
       if (!checkRateLimit(ip, config.rateLimit.maxRequests, config.rateLimit.windowMs)) {
