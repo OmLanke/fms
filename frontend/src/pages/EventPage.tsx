@@ -3,9 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { bookingsApi, Event, eventsApi, inventoryApi, pollBookingStatus, Seat } from '@/lib/api'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { CalendarDays, MapPin, Ticket, Users, ChevronLeft, Loader2 } from 'lucide-react'
 
 type BookingPhase = 'idle' | 'submitting' | 'polling' | 'done'
 
@@ -14,25 +13,44 @@ const SECTION_LABELS: Record<string, string> = {
   VIP: 'VIP',
   FLOOR: 'Floor',
   BALCONY: 'Balcony',
-  GENERAL: 'General',
+  GENERAL: 'General Admission',
 }
-const SECTION_COLORS: Record<string, string> = {
-  VIP: 'bg-amber-50 border-amber-200',
-  FLOOR: 'bg-blue-50 border-blue-200',
-  BALCONY: 'bg-purple-50 border-purple-200',
-  GENERAL: 'bg-gray-50 border-gray-200',
+const SECTION_STYLES: Record<string, { bg: string; border: string; label: string; accent: string }> = {
+  VIP: {
+    bg: 'bg-amber-500/5',
+    border: 'border-amber-500/20',
+    label: 'text-amber-400',
+    accent: 'bg-amber-400',
+  },
+  FLOOR: {
+    bg: 'bg-primary/5',
+    border: 'border-primary/20',
+    label: 'text-primary',
+    accent: 'bg-primary',
+  },
+  BALCONY: {
+    bg: 'bg-violet-500/5',
+    border: 'border-violet-500/20',
+    label: 'text-violet-400',
+    accent: 'bg-violet-400',
+  },
+  GENERAL: {
+    bg: 'bg-white/3',
+    border: 'border-white/10',
+    label: 'text-muted-foreground',
+    accent: 'bg-muted-foreground',
+  },
 }
 
 function groupBySection(seats: Seat[]): Map<string, Map<string, Seat[]>> {
   const sections = new Map<string, Map<string, Seat[]>>()
   for (const seat of seats) {
-    const section = seat.section ?? 'GENERAL'
+    const section = (seat as Seat & { section?: string }).section ?? 'GENERAL'
     if (!sections.has(section)) sections.set(section, new Map())
     const rows = sections.get(section)!
     if (!rows.has(seat.row)) rows.set(seat.row, [])
     rows.get(seat.row)!.push(seat)
   }
-  // Sort seats within each row numerically
   for (const rows of sections.values()) {
     for (const [row, rowSeats] of rows) {
       rows.set(row, rowSeats.sort((a, b) => Number(a.seatNumber) - Number(b.seatNumber)))
@@ -52,17 +70,18 @@ function SeatButton({
   disabled: boolean
   onToggle: (id: string) => void
 }) {
-  let cls =
-    'w-8 h-8 rounded-t-full border text-[10px] font-bold transition-all duration-100 flex items-center justify-center '
+  const isTaken = seat.status === 'RESERVED' || seat.status === 'LOCKED'
 
-  if (seat.status === 'RESERVED' || seat.status === 'LOCKED') {
-    cls += 'bg-gray-300 border-gray-400 text-gray-500 cursor-not-allowed opacity-70'
+  let cls = 'w-8 h-8 rounded-t-full border text-[9px] font-bold transition-all duration-150 flex items-center justify-center '
+
+  if (isTaken) {
+    cls += 'bg-white/5 border-white/10 text-muted-foreground/40 cursor-not-allowed'
   } else if (isSelected) {
-    cls += 'bg-primary border-primary text-primary-foreground scale-110 shadow-md cursor-pointer'
+    cls += 'bg-primary border-primary text-primary-foreground scale-110 shadow-[0_0_12px_rgba(34,211,238,0.4)] cursor-pointer'
   } else if (disabled) {
-    cls += 'bg-muted border-border text-muted-foreground cursor-not-allowed'
+    cls += 'bg-white/5 border-white/8 text-muted-foreground/40 cursor-not-allowed'
   } else {
-    cls += 'bg-emerald-400 border-emerald-500 text-emerald-900 hover:bg-emerald-300 hover:scale-110 cursor-pointer'
+    cls += 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30 hover:border-emerald-400/60 hover:scale-110 cursor-pointer'
   }
 
   return (
@@ -138,7 +157,7 @@ export function EventPage() {
     setError(null)
 
     try {
-      const { id: bookingId } = await bookingsApi.create({ eventId: id, eventName: event.name, seatIds: selected, totalAmount: total })
+      const { id: bookingId } = await bookingsApi.create({ eventId: id, eventName: event!.name, seatIds: selected, totalAmount: total })
       setPhase('polling')
       const booking = await pollBookingStatus(bookingId)
 
@@ -168,13 +187,20 @@ export function EventPage() {
   const busy = phase === 'submitting' || phase === 'polling'
 
   if (loading) {
-    return <main className="mx-auto max-w-7xl px-4 py-10 md:px-6">Loading event...</main>
+    return (
+      <main className="mx-auto max-w-7xl px-4 py-20 md:px-6 flex items-center gap-3 text-sm text-muted-foreground">
+        <div className="h-5 w-5 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+        Loading event...
+      </main>
+    )
   }
 
   if (!event) {
     return (
-      <main className="mx-auto max-w-7xl px-4 py-10 md:px-6">
-        <p className="mb-3 text-destructive">Event not found.</p>
+      <main className="mx-auto max-w-7xl px-4 py-16 md:px-6">
+        <div className="rounded-xl border border-destructive/20 bg-destructive/8 px-4 py-3 text-sm text-destructive mb-4">
+          Event not found.
+        </div>
         <Link to="/" className="text-sm font-medium text-primary hover:underline">
           Back to events
         </Link>
@@ -183,57 +209,81 @@ export function EventPage() {
   }
 
   const sortedSections = [...grouped.keys()].sort(
-    (a, b) => (SECTION_ORDER.indexOf(a) === -1 ? 99 : SECTION_ORDER.indexOf(a)) -
-               (SECTION_ORDER.indexOf(b) === -1 ? 99 : SECTION_ORDER.indexOf(b))
+    (a, b) =>
+      (SECTION_ORDER.indexOf(a) === -1 ? 99 : SECTION_ORDER.indexOf(a)) -
+      (SECTION_ORDER.indexOf(b) === -1 ? 99 : SECTION_ORDER.indexOf(b))
   )
 
   return (
-    <main className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-10 md:grid-cols-[1.25fr_0.75fr] md:px-6">
-      <section className="space-y-6">
+    <main className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-10 md:grid-cols-[1.3fr_0.7fr] md:px-6">
+      <section className="space-y-6 min-w-0">
+        {/* Back link */}
+        <Link to="/" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors group">
+          <ChevronLeft className="h-3.5 w-3.5 group-hover:-translate-x-0.5 transition-transform" />
+          All Events
+        </Link>
+
         {/* Event header */}
         <div>
-          <h1 className="text-3xl font-black tracking-tight md:text-4xl">{event.name}</h1>
-          <p className="mt-2 text-muted-foreground">{event.description}</p>
-          <div className="mt-3 flex flex-wrap gap-2 text-sm">
-            <Badge variant="secondary">{formatDateTime(event.date)}</Badge>
-            <Badge variant="outline">{event.venue?.name ?? 'Venue TBA'}</Badge>
-            <Badge variant="outline">{availableSeats.length} available seats</Badge>
+          <h1 className="text-3xl font-black tracking-[-0.025em] md:text-4xl leading-tight">{event.name}</h1>
+          <p className="mt-2 text-muted-foreground leading-relaxed">{event.description}</p>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <div className="flex items-center gap-1.5 rounded-lg border border-white/8 bg-white/4 px-3 py-1.5 text-xs text-muted-foreground">
+              <CalendarDays className="h-3.5 w-3.5 text-primary/50" />
+              {formatDateTime(event.date)}
+            </div>
+            <div className="flex items-center gap-1.5 rounded-lg border border-white/8 bg-white/4 px-3 py-1.5 text-xs text-muted-foreground">
+              <MapPin className="h-3.5 w-3.5 text-primary/50" />
+              {event.venue?.name ?? 'Venue TBA'}
+            </div>
+            <div className="flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/8 px-3 py-1.5 text-xs text-emerald-400">
+              <Users className="h-3.5 w-3.5" />
+              {availableSeats.length} seats available
+            </div>
           </div>
         </div>
 
         {/* Seat map */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Select Seats</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
+        <div className="rounded-2xl border border-white/8 bg-card overflow-hidden">
+          <div className="border-b border-white/6 px-5 py-4">
+            <h2 className="text-base font-bold">Select Seats</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Click available seats to select them</p>
+          </div>
+
+          <div className="p-5 space-y-5">
             {seats.length === 0 ? (
-              <p className="text-center text-sm text-muted-foreground py-8">No seats available for this event.</p>
+              <div className="py-12 text-center">
+                <Ticket className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">No seats available for this event.</p>
+              </div>
             ) : (
               <>
-                {/* Stage indicator */}
-                <div className="flex flex-col items-center gap-1">
-                  <div className="w-2/3 rounded-lg bg-gradient-to-b from-gray-700 to-gray-900 py-3 text-center text-sm font-bold tracking-widest text-white shadow-lg">
+                {/* Stage */}
+                <div className="flex flex-col items-center gap-1.5">
+                  <div className="w-3/5 rounded-xl bg-gradient-to-b from-white/10 to-white/5 border border-white/10 py-3 text-center text-xs font-bold tracking-[0.3em] text-muted-foreground/70 uppercase shadow-inner">
                     STAGE
                   </div>
-                  <div className="h-4 w-2/3 bg-gradient-to-b from-gray-900/20 to-transparent" />
+                  <div className="h-5 w-3/5 bg-gradient-to-b from-white/5 to-transparent rounded-b-2xl" />
                 </div>
 
                 {/* Sections */}
                 {sortedSections.map((section) => {
                   const rows = grouped.get(section)!
-                  const sectionColor = SECTION_COLORS[section] ?? 'bg-gray-50 border-gray-200'
-                  const sectionLabel = SECTION_LABELS[section] ?? section
+                  const style = SECTION_STYLES[section] ?? SECTION_STYLES.GENERAL
+                  const label = SECTION_LABELS[section] ?? section
 
                   return (
-                    <div key={section} className={`rounded-xl border-2 p-4 ${sectionColor}`}>
-                      <div className="mb-3 text-center text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                        {sectionLabel}
+                    <div key={section} className={`rounded-xl border p-4 ${style.bg} ${style.border}`}>
+                      <div className={`mb-3 flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-[0.18em] ${style.label}`}>
+                        <div className={`h-1 w-8 rounded-full ${style.accent} opacity-60`} />
+                        {label}
+                        <div className={`h-1 w-8 rounded-full ${style.accent} opacity-60`} />
                       </div>
                       <div className="space-y-2">
                         {[...rows.entries()].map(([row, rowSeats]) => (
                           <div key={row} className="flex items-center gap-2">
-                            <span className="w-5 text-right text-xs font-bold text-muted-foreground">{row}</span>
+                            <span className="w-5 text-right text-[10px] font-bold text-muted-foreground/50">{row}</span>
                             <div className="flex flex-1 flex-wrap justify-center gap-1">
                               {rowSeats.map((seat) => (
                                 <SeatButton
@@ -245,7 +295,7 @@ export function EventPage() {
                                 />
                               ))}
                             </div>
-                            <span className="w-5 text-left text-xs font-bold text-muted-foreground">{row}</span>
+                            <span className="w-5 text-left text-[10px] font-bold text-muted-foreground/50">{row}</span>
                           </div>
                         ))}
                       </div>
@@ -254,59 +304,102 @@ export function EventPage() {
                 })}
 
                 {/* Legend */}
-                <div className="flex flex-wrap justify-center gap-4 pt-2 text-xs text-muted-foreground">
+                <div className="flex flex-wrap justify-center gap-5 pt-1 text-xs text-muted-foreground/60">
                   <div className="flex items-center gap-1.5">
-                    <div className="h-4 w-4 rounded-t-full bg-emerald-400 border border-emerald-500" />
+                    <div className="h-4 w-4 rounded-t-full bg-emerald-500/20 border border-emerald-500/40" />
                     Available
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <div className="h-4 w-4 rounded-t-full bg-primary border border-primary" />
+                    <div className="h-4 w-4 rounded-t-full bg-primary border border-primary shadow-[0_0_8px_rgba(34,211,238,0.4)]" />
                     Selected
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <div className="h-4 w-4 rounded-t-full bg-gray-300 border border-gray-400" />
+                    <div className="h-4 w-4 rounded-t-full bg-white/5 border border-white/10" />
                     Taken
                   </div>
                 </div>
               </>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </section>
 
       {/* Booking sidebar */}
       <aside>
-        <Card className="sticky top-24">
-          <CardHeader>
-            <CardTitle>Booking Summary</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="text-sm text-muted-foreground">
-              Selected: <span className="font-medium text-foreground">{selected.length} seat{selected.length !== 1 ? 's' : ''}</span>
+        <div className="sticky top-24 rounded-2xl border border-white/8 bg-card overflow-hidden">
+          {/* Header */}
+          <div className="border-b border-white/6 px-5 py-4">
+            <h2 className="text-base font-bold">Booking Summary</h2>
+          </div>
+
+          <div className="p-5 space-y-4">
+            {/* Selected count */}
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Seats selected</span>
+              <span className="font-bold tabular-nums">
+                {selected.length === 0 ? (
+                  <span className="text-muted-foreground/60">None</span>
+                ) : (
+                  <span className="text-foreground">{selected.length}</span>
+                )}
+              </span>
             </div>
+
+            {/* Seat labels */}
             {selectedSeatLabels && (
-              <div className="text-xs text-muted-foreground break-words">
+              <div className="rounded-lg border border-white/8 bg-white/4 px-3 py-2 text-xs font-mono text-muted-foreground/80 break-words leading-relaxed">
                 {selectedSeatLabels}
               </div>
             )}
-            <div className="text-sm text-muted-foreground">
-              Price per seat: <span className="font-medium text-foreground">{formatCurrency(event.price)}</span>
+
+            {/* Price per seat */}
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Price per seat</span>
+              <span className="font-semibold">{formatCurrency(event.price)}</span>
             </div>
-            <div className="border-t pt-3 text-lg font-semibold text-primary">
-              Total: {formatCurrency(total)}
+
+            {/* Divider */}
+            <div className="border-t border-white/8" />
+
+            {/* Total */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-muted-foreground">Total</span>
+              <span className="text-2xl font-black text-gradient">{formatCurrency(total)}</span>
             </div>
-            {error ? <p className="text-sm text-destructive">{error}</p> : null}
-            {phase === 'polling' && (
-              <p className="text-sm text-muted-foreground">Processing payment — this may take a moment...</p>
+
+            {/* Error */}
+            {error && (
+              <div className="rounded-xl border border-destructive/20 bg-destructive/8 px-3 py-2.5 text-xs text-destructive leading-relaxed">
+                {error}
+              </div>
             )}
-            <Button className="w-full" disabled={selected.length === 0 || busy} onClick={createBooking}>
+
+            {/* Polling status */}
+            {phase === 'polling' && (
+              <div className="flex items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/8 px-3 py-2.5 text-xs text-amber-400">
+                <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+                Processing payment — this may take a moment...
+              </div>
+            )}
+
+            {/* CTA Button */}
+            <Button
+              className="w-full font-bold gap-2"
+              size="lg"
+              disabled={selected.length === 0 || busy}
+              onClick={createBooking}
+            >
+              {busy && <Loader2 className="h-4 w-4 animate-spin" />}
               {submitLabel()}
             </Button>
+
             {!isAuthenticated && selected.length > 0 && (
-              <p className="text-center text-xs text-muted-foreground">You'll be asked to log in to confirm.</p>
+              <p className="text-center text-xs text-muted-foreground/60">
+                You'll be asked to log in to confirm.
+              </p>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </aside>
     </main>
   )

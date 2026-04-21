@@ -6,25 +6,71 @@ import { AuthPage } from '@/pages/AuthPage'
 import { EventPage } from '@/pages/EventPage'
 import { BookingsPage } from '@/pages/BookingsPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
+import { Ticket } from 'lucide-react'
 
 function Header() {
   const { isAuthenticated, user, logout } = useAuth()
+  const location = useLocation()
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur-xl">
-      <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3 md:px-6">
-        <Link to="/" className="text-xl font-black tracking-tight text-primary">TicketFlow</Link>
-        <nav className="flex items-center gap-2">
-          <Link to="/" className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">Home</Link>
+    <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-background/80 backdrop-blur-2xl">
+      <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3.5 md:px-6">
+        {/* Logo */}
+        <Link to="/" className="flex items-center gap-2 group">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-colors">
+            <Ticket className="h-4 w-4 text-primary" />
+          </div>
+          <span className="text-lg font-black tracking-tight text-gradient">TicketFlow</span>
+        </Link>
+
+        {/* Nav */}
+        <nav className="flex items-center gap-1">
+          <Link
+            to="/"
+            className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-colors ${
+              location.pathname === '/'
+                ? 'text-foreground bg-white/5'
+                : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
+            }`}
+          >
+            Home
+          </Link>
+
           {isAuthenticated ? (
             <>
-              <Link to="/bookings" className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">My Bookings</Link>
-              <span className="hidden text-sm text-muted-foreground md:inline">{user?.email}</span>
-              <Button variant="outline" size="sm" onClick={logout}>Logout</Button>
+              <Link
+                to="/bookings"
+                className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  location.pathname === '/bookings'
+                    ? 'text-foreground bg-white/5'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
+                }`}
+              >
+                My Bookings
+              </Link>
+
+              {/* User avatar */}
+              <div className="ml-2 flex items-center gap-2 rounded-full border border-white/10 bg-white/5 pl-1 pr-3 py-1">
+                <div className="h-6 w-6 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-[10px] font-bold text-primary uppercase">
+                  {user?.email?.charAt(0) ?? 'U'}
+                </div>
+                <span className="hidden text-xs font-medium text-muted-foreground md:inline max-w-[140px] truncate">
+                  {user?.email}
+                </span>
+              </div>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={logout}
+                className="ml-1 text-muted-foreground hover:text-foreground hover:bg-white/5 text-sm"
+              >
+                Logout
+              </Button>
             </>
           ) : (
-            <Link to="/auth">
-              <Button size="sm">Sign In</Button>
+            <Link to="/auth" className="ml-2">
+              <Button size="sm" className="glow-sm font-semibold">Sign In</Button>
             </Link>
           )}
         </nav>
@@ -38,7 +84,12 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   const location = useLocation()
 
   if (isLoading) {
-    return <div className="mx-auto max-w-7xl px-4 py-10 text-sm text-muted-foreground md:px-6">Loading account...</div>
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-20 md:px-6 flex flex-col items-center gap-3">
+        <div className="h-8 w-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+        <p className="text-sm text-muted-foreground">Loading account...</p>
+      </div>
+    )
   }
 
   if (!isAuthenticated) {

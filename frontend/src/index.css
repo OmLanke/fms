@@ -23,29 +23,29 @@
     --border: 199 30% 85%;
     --input: 199 30% 85%;
     --ring: 191 72% 36%;
-    --radius: 0.5rem;
+    --radius: 0.75rem;
   }
 
   .dark {
-    --background: 206 40% 8%;
-    --foreground: 193 16% 95%;
-    --card: 206 38% 10%;
-    --card-foreground: 193 16% 95%;
-    --popover: 206 38% 10%;
-    --popover-foreground: 193 16% 95%;
-    --primary: 187 86% 47%;
-    --primary-foreground: 208 40% 10%;
-    --secondary: 28 40% 18%;
-    --secondary-foreground: 41 80% 92%;
-    --muted: 206 30% 16%;
-    --muted-foreground: 195 15% 72%;
-    --accent: 28 40% 18%;
-    --accent-foreground: 41 80% 92%;
-    --destructive: 0 62.8% 30.6%;
+    --background: 220 28% 7%;
+    --foreground: 210 20% 96%;
+    --card: 220 26% 10%;
+    --card-foreground: 210 20% 96%;
+    --popover: 220 26% 10%;
+    --popover-foreground: 210 20% 96%;
+    --primary: 187 86% 52%;
+    --primary-foreground: 220 28% 7%;
+    --secondary: 220 20% 14%;
+    --secondary-foreground: 210 20% 85%;
+    --muted: 220 22% 13%;
+    --muted-foreground: 215 16% 55%;
+    --accent: 28 80% 52%;
+    --accent-foreground: 220 28% 7%;
+    --destructive: 0 70% 52%;
     --destructive-foreground: 210 20% 98%;
-    --border: 205 25% 20%;
-    --input: 205 25% 20%;
-    --ring: 187 86% 47%;
+    --border: 220 20% 18%;
+    --input: 220 20% 18%;
+    --ring: 187 86% 52%;
   }
 }
 
@@ -55,6 +55,7 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
   html {
     scroll-behavior: smooth;
@@ -63,35 +64,183 @@
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(15, 123, 153, 0.45);
+  background: rgba(34, 211, 238, 0.25);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(11, 102, 128, 0.75);
+  background: rgba(34, 211, 238, 0.5);
 }
 
 /* Glass morphism utility */
 .glass {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-card {
+  background: rgba(20, 30, 48, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(34, 211, 238, 0.12);
 }
 
 /* Text gradient utility */
 .text-gradient {
-  background: linear-gradient(130deg, #0e7490 0%, #14b8a6 48%, #f59e0b 100%);
+  background: linear-gradient(135deg, #22d3ee 0%, #67e8f9 40%, #f59e0b 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* Glow effect */
+.text-gradient-amber {
+  background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 60%, #fde68a 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glow effects */
 .glow-primary {
-  box-shadow: 0 0 30px rgba(14, 116, 144, 0.35);
+  box-shadow: 0 0 30px rgba(34, 211, 238, 0.3), 0 0 60px rgba(34, 211, 238, 0.1);
+}
+
+.glow-sm {
+  box-shadow: 0 0 15px rgba(34, 211, 238, 0.2);
+}
+
+.glow-amber {
+  box-shadow: 0 0 30px rgba(245, 158, 11, 0.3);
+}
+
+/* Dot grid pattern */
+.dot-grid {
+  background-image: radial-gradient(rgba(34, 211, 238, 0.15) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.dot-grid-amber {
+  background-image: radial-gradient(rgba(245, 158, 11, 0.12) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Ticket perforated edge */
+.ticket-edge {
+  position: relative;
+}
+.ticket-edge::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  background: hsl(var(--background));
+  border-radius: 50%;
+  border: 1px solid hsl(var(--border));
+}
+.ticket-edge::after {
+  content: '';
+  position: absolute;
+  right: -1px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  background: hsl(var(--background));
+  border-radius: 50%;
+  border: 1px solid hsl(var(--border));
+}
+
+/* Shine animation */
+.shine {
+  position: relative;
+  overflow: hidden;
+}
+.shine::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+  animation: shine 3s ease-in-out infinite;
+}
+
+@keyframes shine {
+  0% { left: -100%; }
+  50%, 100% { left: 150%; }
+}
+
+/* Gradient border */
+.gradient-border {
+  position: relative;
+  background: hsl(var(--card));
+  border-radius: var(--radius);
+}
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: calc(var(--radius) + 1px);
+  background: linear-gradient(135deg, rgba(34,211,238,0.4), rgba(245,158,11,0.2), rgba(34,211,238,0.1));
+  z-index: -1;
+}
+
+/* Status pulse dot */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.status-dot.confirmed {
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+}
+.status-dot.pending {
+  background: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+.status-dot.failed {
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+}
+.status-dot.cancelled {
+  background: #6b7280;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.8); }
+}
+
+/* Eyebrow label */
+.eyebrow {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+/* Noise texture overlay */
+.noise::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  opacity: 0.4;
+  pointer-events: none;
+  border-radius: inherit;
 }
