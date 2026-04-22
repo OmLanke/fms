@@ -1,0 +1,93 @@
+{
+  "uid": "ticketflow-logs",
+  "title": "TicketFlow — Logs",
+  "tags": ["ticketflow", "logs"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "refresh": "15s",
+  "time": { "from": "now-30m", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "logs",
+      "title": "gateway",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 5 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "options": { "dedupStrategy": "none", "showLabels": false, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": true },
+      "targets": [{ "expr": "{app=\"gateway\"}", "refId": "A" }]
+    },
+    {
+      "id": 2,
+      "type": "logs",
+      "title": "user-service",
+      "gridPos": { "x": 0, "y": 5, "w": 24, "h": 5 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "options": { "dedupStrategy": "none", "showLabels": false, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": true },
+      "targets": [{ "expr": "{app=\"user-service\"}", "refId": "A" }]
+    },
+    {
+      "id": 3,
+      "type": "logs",
+      "title": "event-service",
+      "gridPos": { "x": 0, "y": 10, "w": 24, "h": 5 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "options": { "dedupStrategy": "none", "showLabels": false, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": true },
+      "targets": [{ "expr": "{app=\"event-service\"}", "refId": "A" }]
+    },
+    {
+      "id": 4,
+      "type": "logs",
+      "title": "booking-service",
+      "gridPos": { "x": 0, "y": 15, "w": 24, "h": 5 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "options": { "dedupStrategy": "none", "showLabels": false, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": true },
+      "targets": [{ "expr": "{app=\"booking-service\"}", "refId": "A" }]
+    },
+    {
+      "id": 5,
+      "type": "logs",
+      "title": "inventory-service",
+      "gridPos": { "x": 0, "y": 20, "w": 24, "h": 5 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "options": { "dedupStrategy": "none", "showLabels": false, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": true },
+      "targets": [{ "expr": "{app=\"inventory-service\"}", "refId": "A" }]
+    },
+    {
+      "id": 6,
+      "type": "logs",
+      "title": "payment-service",
+      "gridPos": { "x": 0, "y": 25, "w": 24, "h": 5 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "options": { "dedupStrategy": "none", "showLabels": false, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": true },
+      "targets": [{ "expr": "{app=\"payment-service\"}", "refId": "A" }]
+    },
+    {
+      "id": 7,
+      "type": "logs",
+      "title": "notification-service",
+      "gridPos": { "x": 0, "y": 30, "w": 24, "h": 5 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "options": { "dedupStrategy": "none", "showLabels": false, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": true },
+      "targets": [{ "expr": "{app=\"notification-service\"}", "refId": "A" }]
+    },
+    {
+      "id": 8,
+      "type": "logs",
+      "title": "All Services — ERRORs only",
+      "gridPos": { "x": 0, "y": 35, "w": 24, "h": 7 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "options": { "dedupStrategy": "none", "showLabels": true, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": true },
+      "targets": [{ "expr": "{namespace=\"ticketflow\"} |~ \"(?i)(error|exception|fatal|traceback)\"", "refId": "A" }]
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "DS_LOKI",
+        "type": "datasource",
+        "pluginId": "loki",
+        "hide": 2
+      }
+    ]
+  }
+}

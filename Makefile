@@ -193,18 +193,18 @@ k8s-infra: ## Deploy infrastructure to Kubernetes
 	kubectl apply -f k8s/infra/ -n $(K8S_NAMESPACE)
 
 k8s-monitoring: ## Deploy monitoring stack to Kubernetes
-	kubectl apply -f k8s/monitoring/ -n $(K8S_NAMESPACE)
+	kubectl apply -f k8s/monitoring/ -n $(K8S_NAMESPACE) --recursive
 
 k8s-services: ## Deploy all application services to Kubernetes
 	kubectl apply -f k8s/configmaps/ -n $(K8S_NAMESPACE)
 	kubectl apply -f k8s/secrets/ -n $(K8S_NAMESPACE)
-	kubectl apply -f k8s/apps/ -n $(K8S_NAMESPACE)
+	kubectl apply -f k8s/apps/ -n $(K8S_NAMESPACE) --recursive
 
 k8s-keda: ## Deploy KEDA ScaledObjects
-	kubectl apply -f k8s/keda/ -n $(K8S_NAMESPACE)
+	kubectl apply -f k8s/keda/ -n $(K8S_NAMESPACE) --recursive
 
 k8s-ingress: ## Deploy ingress
-	kubectl apply -f k8s/ingress/ -n $(K8S_NAMESPACE)
+	kubectl apply -f k8s/ingress/ -n $(K8S_NAMESPACE) --recursive
 
 k8s-apply: k8s-namespace k8s-infra k8s-monitoring k8s-services k8s-keda k8s-ingress ## Deploy everything to Kubernetes
 

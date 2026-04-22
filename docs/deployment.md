@@ -96,7 +96,155 @@ certbot --nginx -d tickets.yourdomain.com
 
 ## Kubernetes
 
-### Prerequisites
+Two sub-sections below: **Local (OrbStack / Docker Desktop)** for development on a single machine, and **Production cluster** for a real environment.
+
+---
+
+### Local Kubernetes (OrbStack / Docker Desktop)
+
+This is the tested path for running the full stack on a single developer machine. All images are built locally; no registry is required.
+
+#### Prerequisites
+
+| Tool | Install |
+|---|---|
+| OrbStack or Docker Desktop | [orbstack.dev](https://orbstack.dev) — enable Kubernetes in settings |
+| `kubectl` | bundled with OrbStack; or `brew install kubectl` |
+| `make` | `brew install make` |
+| `docker` | bundled with OrbStack / Docker Desktop |
+
+> **Memory:** The full stack needs approximately 6–7 GB of RAM allocated to the VM. On an 8 GB machine this leaves very little headroom. See [Memory-constrained startup](#memory-constrained-startup) below.
+
+#### 1. Build all images locally
+
+```bash
+make k8s-build
+# Builds: gateway, user-service, event-service, booking-service,
+#         inventory-service, payment-service, notification-service, frontend
+```
+
+All images are tagged `ticketflow/<service>:latest` and stored in the local Docker daemon that the cluster already uses — no push needed.
+
+#### 2. Apply the namespace and secrets
+
+```bash
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/secrets/
+```
+
+#### 3. Deploy infrastructure (ordered)
+
+Infra services must be healthy before app services start. Deploy and wait for each layer:
+
+```bash
+# Persistent stores and message broker
+kubectl apply -f k8s/infra/ -n ticketflow --recursive
+
+# Wait for the critical path: ZooKeeper → Kafka → Postgres → MongoDB → Redis
+kubectl wait --for=condition=ready pod/zookeeper-0 -n ticketflow --timeout=120s
+kubectl wait --for=condition=ready pod/kafka-0      -n ticketflow --timeout=120s
+kubectl wait --for=condition=ready pod/postgres-0   -n ticketflow --timeout=120s
+kubectl wait --for=condition=ready pod/mongodb-0    -n ticketflow --timeout=120s
+kubectl wait --for=condition=ready pod/redis-0      -n ticketflow --timeout=120s
+```
+
+#### 4. Deploy application services
+
+```bash
+kubectl apply -f k8s/apps/ -n ticketflow --recursive
+```
+
+#### 5. Deploy monitoring (optional)
+
+```bash
+kubectl apply -f k8s/monitoring/ -n ticketflow --recursive
+```
+
+#### 6. Seed demo data
+
+```bash
+kubectl exec -n ticketflow deployment/event-service -- python -m app.seed
+```
+
+Demo credentials: `test@ticketflow.dev` / `Test1234!`
+
+#### 7. Verify
+
+```bash
+make health
+# All six services should report "up"
+```
+
+#### Accessing the stack
+
+All user-facing services are exposed as **NodePort** — no port-forwarding needed.
+
+**Application**
+
+| Service | URL | NodePort |
+|---|---|---|
+| Frontend (React) | http://localhost:30080 | 30080 → pod:80 |
+| API Gateway | http://localhost:30000 | 30000 → pod:3000 |
+
+**Observability**
+
+| Tool | URL | NodePort | Credentials |
+|---|---|---|---|
+| Grafana | http://localhost:30030 | 30030 → pod:3000 | admin / admin |
+| Prometheus | http://localhost:30090 | 30090 → pod:9090 | — |
+| Jaeger | http://localhost:30686 | 30686 → pod:16686 | — |
+
+Loki is internal-only (scraped by Grafana automatically via the provisioned datasource — use **Explore → Loki** in Grafana to query logs).
+
+#### Memory-constrained startup
+
+On a machine with ≤ 8 GB RAM, deploying all services at once can OOM the cluster VM. To avoid this:
+
+1. Deploy and wait for infra first (step 3 above).
+2. Then deploy app services (step 4). If pods are `Pending` with `Insufficient memory`, the HPAs have scaled to 2 replicas. Patch them all down to 1:
+
+```bash
+for svc in booking-service user-service event-service gateway inventory-service; do
+  kubectl patch hpa $svc -n ticketflow --type=merge -p '{"spec":{"minReplicas":1}}'
+done
+kubectl scale deployment \
+  booking-service user-service event-service gateway \
+  inventory-service payment-service notification-service frontend \
+  -n ticketflow --replicas=1
+```
+
+#### Kafka cluster ID mismatch after hard restart
+
+If the cluster VM is restarted (OOM kill, `orbctl stop`, etc.), Kafka will fail with:
+
+```
+Fatal error: Invalid cluster.id … Expected X, but read Y
+```
+
+ZooKeeper reinitialised with a new cluster ID but the Kafka PVC still has the old one. Fix:
+
+```bash
+kubectl scale statefulset kafka zookeeper -n ticketflow --replicas=0
+kubectl delete pvc kafka-data-kafka-0 zookeeper-data-zookeeper-0 -n ticketflow
+kubectl scale statefulset zookeeper -n ticketflow --replicas=1
+kubectl wait --for=condition=ready pod/zookeeper-0 -n ticketflow --timeout=60s
+kubectl scale statefulset kafka -n ticketflow --replicas=1
+kubectl wait --for=condition=ready pod/kafka-0 -n ticketflow --timeout=90s
+```
+
+Then restart any app pods that started before Kafka was ready:
+
+```bash
+kubectl rollout restart deployment \
+  booking-service event-service inventory-service payment-service \
+  notification-service -n ticketflow
+```
+
+---
+
+### Production cluster
+
+#### Prerequisites
 
 | Tool | Install |
 |---|---|
@@ -105,7 +253,7 @@ certbot --nginx -d tickets.yourdomain.com
 | KEDA operator | Installed via Helm (see below) |
 | Container registry | Docker Hub, GCR, ECR, or GHCR |
 
-### 1. Install KEDA
+#### 1. Install KEDA
 
 ```bash
 helm repo add kedacore https://kedacore.github.io/charts
@@ -121,121 +269,48 @@ Verify:
 kubectl get pods -n keda
 ```
 
-### 2. Create the namespace
+#### 2. Create the namespace and secrets
 
 ```bash
 kubectl apply -f k8s/namespace.yaml
-# Creates: ticketflow namespace
-```
-
-### 3. Configure secrets
-
-Copy the secrets template and populate with production values:
-
-```bash
 cp k8s/secrets/app-secrets.yaml.example k8s/secrets/app-secrets.yaml
-nano k8s/secrets/app-secrets.yaml
+# Edit k8s/secrets/app-secrets.yaml with production values (base64-encoded)
+kubectl apply -f k8s/secrets/
 ```
 
-The file uses base64-encoded values:
+Encode a value:
 
 ```bash
-# Encode a value:
 echo -n "your-secret-value" | base64
 ```
 
-Apply:
+#### 3. Push images to a registry
 
 ```bash
-kubectl apply -f k8s/secrets/app-secrets.yaml
+# Tag and push (replace <registry> with your registry prefix)
+for svc in gateway user-service event-service booking-service \
+            inventory-service payment-service notification-service frontend; do
+  docker tag ticketflow/$svc:latest <registry>/ticketflow-$svc:latest
+  docker push <registry>/ticketflow-$svc:latest
+done
 ```
 
-### 4. Update image registry
-
-Edit the image field in each deployment manifest to point to your registry:
+Update image references in the manifests:
 
 ```bash
-# Example: update all manifests to use your Docker Hub username
 find k8s/ -name "deployment.yaml" \
-  -exec sed -i 's|image: ticketflow/|image: yourdockerhubuser/ticketflow-|g' {} +
+  -exec sed -i 's|image: ticketflow/|image: <registry>/ticketflow-|g' {} +
 ```
 
-### 5. Deploy infrastructure
-
-```bash
-# Deploy Kafka, PostgreSQL, MongoDB, Redis
-kubectl apply -f k8s/infrastructure/
-
-# Wait for infrastructure to be ready
-kubectl wait --for=condition=ready pod \
-  -l app=kafka \
-  -n ticketflow \
-  --timeout=120s
-```
-
-### 6. Deploy application services
+#### 4. Deploy
 
 ```bash
 make k8s-apply
-# Equivalent to: kubectl apply -f k8s/ --recursive
 ```
 
-Or deploy services individually:
+#### 5. Expose via Ingress
 
-```bash
-kubectl apply -f k8s/gateway/
-kubectl apply -f k8s/services/user-service/
-kubectl apply -f k8s/services/event-service/
-kubectl apply -f k8s/services/booking-service/
-kubectl apply -f k8s/services/inventory-service/
-kubectl apply -f k8s/services/payment-service/
-kubectl apply -f k8s/services/notification-service/
-```
-
-### 7. Verify deployment
-
-```bash
-make k8s-status
-# Equivalent to: kubectl get pods,services,deployments -n ticketflow
-```
-
-Expected output:
-
-```
-NAME                                    READY   STATUS    RESTARTS   AGE
-pod/gateway-6b7d9c6d9f-xkj2p           1/1     Running   0          2m
-pod/user-service-5c8d7b9c8f-pqr3s      1/1     Running   0          2m
-pod/event-service-7f9c6d8b7f-lmn4t     1/1     Running   0          2m
-pod/booking-service-8d6c7b5a9f-uvw5k   1/1     Running   0          2m
-pod/inventory-service-4b9d8c7f6d-xyz6  1/1     Running   0          2m
-pod/payment-service-3a8b7c6d5e-abc7    1/1     Running   0          2m
-pod/notification-service-2b7c6d5f-def8 1/1     Running   0          2m
-```
-
-### 8. Accessing services in Kubernetes
-
-#### Port-forward for local testing
-
-```bash
-# API Gateway
-kubectl port-forward -n ticketflow svc/gateway 3000:3000
-
-# Grafana
-kubectl port-forward -n ticketflow svc/grafana 3010:3000
-
-# Jaeger
-kubectl port-forward -n ticketflow svc/jaeger 16686:16686
-```
-
-#### Production Ingress
-
-Apply the Ingress resource (edit the hostname first):
-
-```bash
-kubectl apply -f k8s/ingress.yaml
-```
-
-The Ingress uses `cert-manager` for automatic TLS. Install cert-manager if not present:
+Change the `frontend` and `gateway` services back to `ClusterIP` for production (NodePort is only appropriate locally), then apply an Ingress. Install cert-manager if not present:
 
 ```bash
 helm repo add jetstack https://charts.jetstack.io
@@ -243,6 +318,37 @@ helm install cert-manager jetstack/cert-manager \
   --namespace cert-manager \
   --create-namespace \
   --set installCRDs=true
+```
+
+Example Ingress (edit hostnames):
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ticketflow
+  namespace: ticketflow
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  tls:
+    - hosts: [tickets.yourdomain.com, api.yourdomain.com]
+      secretName: ticketflow-tls
+  rules:
+    - host: tickets.yourdomain.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: frontend, port: { number: 80 } }
+    - host: api.yourdomain.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: gateway, port: { number: 3000 } }
 ```
 
 ---
@@ -354,11 +460,7 @@ annotations:
   prometheus.io/path: "/metrics"
 ```
 
-Access:
-
-```bash
-kubectl port-forward -n ticketflow svc/prometheus 9090:9090
-```
+Access: http://localhost:30090
 
 ### Grafana
 
@@ -370,21 +472,16 @@ Pre-built dashboards available at `infra/grafana/dashboards/`:
 - `jvm.json` — JVM heap, GC, thread count (Java services).
 - `python.json` — Python process memory, CPU, event loop lag.
 
-Import dashboards:
+Access: http://localhost:30030 (admin / admin)
 
-```bash
-kubectl port-forward -n ticketflow svc/grafana 3010:3000
-# Open http://localhost:3010
-# Dashboards → Import → Upload JSON file
-```
+Import dashboards: **Dashboards → Import → Upload JSON file**
 
 ### Jaeger
 
 Trace a booking end-to-end:
 
-```bash
-kubectl port-forward -n ticketflow svc/jaeger 16686:16686
-# Open http://localhost:16686
+```
+http://localhost:30686
 # Search by Service: "gateway", Operation: "POST /api/bookings"
 # The trace shows spans across: gateway → booking-service → kafka → inventory-service → payment-service → notification-service
 ```
@@ -401,9 +498,8 @@ kubectl logs --tail=100 deployment/payment-service -n ticketflow
 # All pods in a deployment
 kubectl logs -f -l app=booking-service -n ticketflow
 
-# Query logs in Grafana Loki
-kubectl port-forward -n ticketflow svc/grafana 3010:3000
-# Explore → Loki → {app="booking-service"} |= "ERROR"
+# Query logs in Grafana Loki (no port-forward needed)
+# Open http://localhost:30030 → Explore → Loki → {app="booking-service"} |= "ERROR"
 ```
 
 ---

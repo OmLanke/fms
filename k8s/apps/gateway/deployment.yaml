@@ -7,7 +7,7 @@ metadata:
     app: gateway
     app.kubernetes.io/component: backend
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: gateway
@@ -103,5 +103,6 @@ spec:
   ports:
     - port: 3000
       targetPort: 3000
+      nodePort: 30000
       name: http
-  type: ClusterIP
+  type: NodePort

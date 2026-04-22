@@ -105,5 +105,6 @@ spec:
   ports:
     - port: 16686
       targetPort: 16686
+      nodePort: 30686
       name: ui
-  type: LoadBalancer
+  type: NodePort
