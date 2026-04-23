@@ -310,9 +310,9 @@ function BookingCard({ booking, seatLabels }: { booking: Booking; seatLabels: st
             ))}
           </div>
 
-          <Link to={`/bookings/${booking.id}`} className="text-[10px] font-mono-dm font-bold uppercase tracking-tighter text-primary hover:text-primary/80 transition-colors">
+          <div className="text-[10px] font-mono-dm font-bold uppercase tracking-tighter text-primary hover:text-primary/80 transition-colors">
             View ticket
-          </Link>
+          </div>
         </div>
       </div>
 
