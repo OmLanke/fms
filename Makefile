@@ -193,14 +193,19 @@ k8s-infra: ## Deploy infrastructure to Kubernetes
 	kubectl apply -f k8s/infra/ -n $(K8S_NAMESPACE)
 
 k8s-monitoring: ## Deploy monitoring stack to Kubernetes
-	kubectl apply -f k8s/monitoring/ -n $(K8S_NAMESPACE) --recursive
+	kubectl apply -f k8s/monitoring/grafana/ -n $(K8S_NAMESPACE)
+	kubectl apply -f k8s/monitoring/jaeger/ -n $(K8S_NAMESPACE)
+	kubectl apply -f k8s/monitoring/loki/ -n $(K8S_NAMESPACE)
+	kubectl apply -f k8s/monitoring/prometheus/ -n $(K8S_NAMESPACE)
+	kubectl apply -f k8s/monitoring/promtail/ -n $(K8S_NAMESPACE)
 
 k8s-services: ## Deploy all application services to Kubernetes
 	kubectl apply -f k8s/configmaps/ -n $(K8S_NAMESPACE)
 	kubectl apply -f k8s/secrets/ -n $(K8S_NAMESPACE)
 	kubectl apply -f k8s/apps/ -n $(K8S_NAMESPACE) --recursive
 
-k8s-keda: ## Deploy KEDA ScaledObjects
+k8s-keda: ## Deploy KEDA ScaledObjects (removes conflicting HPAs first)
+	kubectl delete hpa payment-service notification-service -n $(K8S_NAMESPACE) --ignore-not-found
 	kubectl apply -f k8s/keda/ -n $(K8S_NAMESPACE) --recursive
 
 k8s-ingress: ## Deploy ingress
