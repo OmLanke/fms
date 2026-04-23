@@ -6,10 +6,12 @@ import { Event, eventsApi } from '@/lib/api'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { useAuth } from '@/contexts/AuthContext'
 
 const eventImage = '/Rock_Night.jpg'
 
 export function LandingPage() {
+  const { isAuthenticated } = useAuth()
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -77,11 +79,13 @@ export function LandingPage() {
                 Browse Events <ArrowRight className="h-3.5 w-3.5" />
               </Button>
             </a>
-            <Link to="/auth">
-              <Button size="sm" variant="ghost" className="h-[36px] rounded-lg">
-                Sign In to Book
-              </Button>
-            </Link>
+            {!isAuthenticated && (
+              <Link to="/auth">
+                <Button size="sm" variant="ghost" className="h-[36px] rounded-lg">
+                  Sign In to Book
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </section>

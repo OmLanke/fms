@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react'
+import { FormEvent, useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { authApi } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
@@ -27,11 +27,18 @@ export function AuthPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const { login } = useAuth()
+  const { login, isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const state = location.state as RedirectState | null
   const destination = state?.from ?? '/'
+
+  // Auto-redirect if already signed in
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(destination, { replace: true })
+    }
+  }, [isAuthenticated, navigate, destination])
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
