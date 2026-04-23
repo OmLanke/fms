@@ -3,7 +3,7 @@ import gsap from 'gsap'
 import { bookingsApi, Booking, inventoryApi } from '@/lib/api'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { Ticket } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { TicketModal } from '@/components/TicketModal'
 
@@ -43,6 +43,8 @@ async function buildSeatLabelsByBooking(
 }
 
 export function BookingsPage() {
+  const location = useLocation()
+  const notice = (location.state as { notice?: string } | null)?.notice
   const [bookings, setBookings] = useState<Booking[]>([])
   const [seatLabelsByBooking, setSeatLabelsByBooking] = useState<
     Record<string, string[]>
@@ -133,7 +135,13 @@ export function BookingsPage() {
         )}
       </div>
 
-      {/* Loading */}
+      {notice && (
+        <div className="mb-6 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-300 font-sans">
+          {notice}
+        </div>
+      )}
+
+      {/* Loading state */}
       {loading && (
         <div className="flex items-center gap-3 py-12 text-sm text-muted-foreground">
           <div className="spinner" />
@@ -201,8 +209,8 @@ function StatCard({
     accent === 'confirmed'
       ? 'border-t-2 border-t-[#16a34a]'
       : accent === 'pending'
-      ? 'border-t-2 border-t-[#d97706]'
-      : 'border-t-2 border-t-foreground/20'
+        ? 'border-t-2 border-t-[#d97706]'
+        : 'border-t-2 border-t-foreground/20'
 
   return (
     <div
@@ -231,7 +239,7 @@ function BookingCard({
         <div className="flex items-start justify-between gap-4 mb-3">
           <div className="flex items-center gap-2">
             <span className="eyebrow text-muted-foreground/60">Booking</span>
-            <span className="font-mono-dm text-xs font-medium text-foreground/70">
+            <span className="font-mono text-xs font-medium text-foreground/70">
               #{shortId}
             </span>
           </div>
@@ -239,13 +247,13 @@ function BookingCard({
             className={`flex items-center gap-1.5 border border-current px-2 py-0.5 ${config.textClass}`}
           >
             <span className={`status-dot ${config.dotClass}`} />
-            <span className="text-[10px] font-bold font-mono-dm tracking-wider">{config.label}</span>
+            <span className="text-[10px] font-bold font-mono tracking-wider">{config.label}</span>
           </div>
         </div>
 
         <h3 className="font-sans font-semibold tracking-tight text-2xl leading-tight mb-3">{booking.eventName}</h3>
 
-        <p className="font-mono-dm text-[11px] text-muted-foreground mb-4">
+        <p className="font-mono text-[11px] text-muted-foreground mb-4">
           {formatDateTime(booking.createdAt)}
         </p>
 
@@ -262,7 +270,7 @@ function BookingCard({
               {seatLabels.map((label, i) => (
                 <span
                   key={`${booking.id}-${label}-${i}`}
-                  className="text-[9px] font-mono-dm px-1.5 py-0.5 border border-border bg-muted/60 text-muted-foreground"
+                  className="text-[9px] font-mono px-1.5 py-0.5 border border-border bg-muted/60 text-muted-foreground"
                 >
                   {label}
                 </span>
@@ -274,21 +282,26 @@ function BookingCard({
       </div>
 
       {/* Ticket stub */}
-      <div className="w-[80px] shrink-0 border-l border-dashed border-border flex flex-col items-center justify-center gap-4 p-3">
-        <div className="text-center">
-          <p className="eyebrow text-muted-foreground/40 mb-1">Ref</p>
-          <p className="font-mono-dm text-xs font-bold text-foreground/60">{shortId}</p>
+      <div className="w-[100px] md:w-[120px] shrink-0 border-l border-dashed border-border flex flex-col items-center justify-center gap-4 relative bg-card">
+        <div className="text-center space-y-1">
+          <p className="font-mono text-[9px] font-bold text-muted-foreground/40 uppercase">Ref</p>
+          <p className="font-mono text-xs font-bold text-foreground/60">{shortId}</p>
         </div>
-        <div className="flex items-end justify-center gap-px h-8 w-full opacity-20">
-          {[2, 4, 3, 5, 2, 4, 3, 5, 2, 3].map((h, i) => (
+
+        {/* Decorative Barcode */}
+        <div className="flex items-end justify-center gap-0.5 h-8 w-full opacity-40">
+          {[...Array(10)].map((_, i) => (
             <div
               key={i}
-              className="bg-foreground w-[2px]"
-              style={{ height: `${h * 20}%` }}
+              className="bg-foreground w-[1px] md:w-[2px]"
+              style={{ height: `${Math.floor((i % 5) * 15) + 20}%` }}
             />
           ))}
         </div>
-        <span className="eyebrow text-muted-foreground/40 text-center">tap</span>
+
+        <div className="text-[10px] font-mono font-bold uppercase tracking-tighter text-primary hover:text-primary/80 transition-colors">
+          View ticket
+        </div>
       </div>
     </div>
   )

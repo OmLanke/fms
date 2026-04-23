@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
-import { bookingsApi, Event, eventsApi, inventoryApi, pollBookingStatus, Seat } from '@/lib/api'
+import { bookingsApi, BookingStatusTimeoutError, Event, eventsApi, inventoryApi, paymentsApi, pollBookingStatus, Seat } from '@/lib/api'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { CalendarDays, MapPin, Ticket, Users, ChevronLeft, Loader2 } from 'lucide-react'
 
-type BookingPhase = 'idle' | 'submitting' | 'polling' | 'done'
+type BookingPhase = 'idle' | 'submitting' | 'checkout' | 'polling' | 'done'
 
 const SECTION_ORDER = ['VIP', 'FLOOR', 'BALCONY', 'GENERAL']
 const SECTION_LABELS: Record<string, string> = {
@@ -47,7 +47,7 @@ function SeatButton({
   const isTaken = seat.status === 'RESERVED' || seat.status === 'LOCKED'
 
   let cls =
-    'w-8 h-8 border text-[9px] font-bold font-mono-dm transition-all duration-100 flex items-center justify-center shrink-0 rounded-none '
+    'w-8 h-8 border text-[9px] font-bold font-mono transition-all duration-100 flex items-center justify-center shrink-0 rounded-md '
 
   if (isTaken) {
     cls += 'bg-muted border-border text-muted-foreground/30 cursor-not-allowed'
@@ -73,10 +73,116 @@ function SeatButton({
   )
 }
 
+type RazorpaySuccessResponse = {
+  razorpay_payment_id: string
+  razorpay_order_id: string
+  razorpay_signature: string
+}
+
+type RazorpayCheckoutResult =
+  | { status: 'success'; response: RazorpaySuccessResponse }
+  | { status: 'dismissed' }
+  | { status: 'failed'; message: string }
+
+let razorpayScriptPromise: Promise<void> | null = null
+
+function loadRazorpayScript(): Promise<void> {
+  if ((window as Window & { Razorpay?: unknown }).Razorpay) {
+    return Promise.resolve()
+  }
+
+  if (razorpayScriptPromise) {
+    return razorpayScriptPromise
+  }
+
+  razorpayScriptPromise = new Promise<void>((resolve, reject) => {
+    const existingScript = document.getElementById('razorpay-checkout-script') as HTMLScriptElement | null
+    if (existingScript) {
+      existingScript.addEventListener('load', () => resolve(), { once: true })
+      existingScript.addEventListener('error', () => reject(new Error('Unable to load Razorpay checkout script.')), { once: true })
+      return
+    }
+
+    const script = document.createElement('script')
+    script.id = 'razorpay-checkout-script'
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    script.async = true
+    script.onload = () => resolve()
+    script.onerror = () => reject(new Error('Unable to load Razorpay checkout script.'))
+    document.body.appendChild(script)
+  })
+
+  return razorpayScriptPromise
+}
+
+function getPaymentFailedMessage(payload: unknown): string {
+  const response = payload as { error?: { description?: string } }
+  return response.error?.description ?? 'Payment failed. Please try again.'
+}
+
+function openRazorpayCheckout(args: {
+  key: string
+  orderId: string
+  amount: number
+  currency: string
+  eventName: string
+  userEmail?: string
+}): Promise<RazorpayCheckoutResult> {
+  return new Promise((resolve, reject) => {
+    const RazorpayConstructor = (window as Window & {
+      Razorpay?: new (options: Record<string, unknown>) => {
+        open: () => void
+        on?: (event: string, handler: (payload: unknown) => void) => void
+      }
+    }).Razorpay
+
+    if (!RazorpayConstructor) {
+      reject(new Error('Razorpay checkout is not available.'))
+      return
+    }
+
+    let settled = false
+    const settle = (result: RazorpayCheckoutResult) => {
+      if (settled) return
+      settled = true
+      resolve(result)
+    }
+
+    const checkout = new RazorpayConstructor({
+      key: args.key,
+      amount: args.amount,
+      currency: args.currency,
+      order_id: args.orderId,
+      name: 'TicketFlow',
+      description: `Booking for ${args.eventName}`,
+      prefill: {
+        email: args.userEmail,
+      },
+      theme: {
+        color: '#06b6d4',
+      },
+      handler: (response: RazorpaySuccessResponse) => {
+        settle({ status: 'success', response })
+      },
+      modal: {
+        ondismiss: () => {
+          settle({ status: 'dismissed' })
+        },
+      },
+    })
+
+    checkout.on?.('payment.failed', (payload: unknown) => {
+      settle({ status: 'failed', message: getPaymentFailedMessage(payload) })
+    })
+
+    checkout.open()
+  })
+}
+
 export function EventPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
 
   const [event, setEvent] = useState<Event | null>(null)
   const [seats, setSeats] = useState<Seat[]>([])
@@ -129,8 +235,9 @@ export function EventPage() {
   }
 
   const createBooking = async () => {
-    if (!id || selected.length === 0) return
-    if (!isAuthenticated) {
+    if (!id || selected.length === 0 || !event) return
+
+    if (!isAuthenticated || !user) {
       navigate('/auth', { state: { from: `/events/${id}` } })
       return
     }
@@ -139,10 +246,57 @@ export function EventPage() {
     try {
       const { id: bookingId } = await bookingsApi.create({
         eventId: id,
-        eventName: event!.name,
+        eventName: event.name,
         seatIds: selected,
         totalAmount: total,
       })
+
+      await loadRazorpayScript()
+
+      const order = await paymentsApi.createOrder({
+        booking_id: bookingId,
+        user_id: user.id,
+        amount: total,
+        currency: 'INR',
+      })
+
+      setPhase('checkout')
+      const checkoutResult = await openRazorpayCheckout({
+        key: order.razorpay_key_id,
+        orderId: order.order_id,
+        amount: order.amount,
+        currency: order.currency,
+        eventName: event.name,
+        userEmail: user.email,
+      })
+
+      if (checkoutResult.status === 'dismissed') {
+        await bookingsApi.cancel(bookingId).catch(() => undefined)
+        setPhase('idle')
+        setError('Payment was cancelled. Your booking has been cancelled.')
+        return
+      }
+
+      if (checkoutResult.status === 'failed') {
+        await bookingsApi.cancel(bookingId).catch(() => undefined)
+        setPhase('idle')
+        setError(checkoutResult.message)
+        return
+      }
+
+      const verification = await paymentsApi.verify({
+        payment_id: order.payment_id,
+        razorpay_order_id: checkoutResult.response.razorpay_order_id,
+        razorpay_payment_id: checkoutResult.response.razorpay_payment_id,
+        signature: checkoutResult.response.razorpay_signature,
+      })
+
+      if (verification.status !== 'SUCCESS') {
+        setPhase('idle')
+        setError('Payment verification failed. Please try again.')
+        return
+      }
+
       setPhase('polling')
       const booking = await pollBookingStatus(bookingId)
       if (booking.status === 'CONFIRMED') {
@@ -155,6 +309,16 @@ export function EventPage() {
         )
       }
     } catch (err: unknown) {
+      if (err instanceof BookingStatusTimeoutError) {
+        setPhase('done')
+        navigate('/bookings', {
+          state: {
+            notice: 'Booking is still processing. This can take a bit longer under load, so check the latest status here in My Bookings.',
+          },
+        })
+        return
+      }
+
       setPhase('idle')
       setError(
         err instanceof Error ? err.message : 'Booking failed. Please try again.'
@@ -164,11 +328,12 @@ export function EventPage() {
 
   const submitLabel = () => {
     if (phase === 'submitting') return 'Placing order...'
+    if (phase === 'checkout') return 'Awaiting payment...'
     if (phase === 'polling') return 'Confirming...'
     return 'Confirm Booking'
   }
 
-  const busy = phase === 'submitting' || phase === 'polling'
+  const busy = phase === 'submitting' || phase === 'checkout' || phase === 'polling'
 
   if (loading) {
     return (
@@ -273,7 +438,7 @@ export function EventPage() {
                       <div className="p-4 space-y-2">
                         {[...rows.entries()].map(([row, rowSeats]) => (
                           <div key={row} className="flex items-center gap-2">
-                            <span className="w-5 text-right text-[9px] font-bold font-mono-dm text-muted-foreground/50 shrink-0">
+                            <span className="w-5 text-right text-[9px] font-bold font-mono text-muted-foreground/50 shrink-0">
                               {row}
                             </span>
                             <div className="flex flex-1 flex-wrap justify-center gap-1">
@@ -287,7 +452,7 @@ export function EventPage() {
                                 />
                               ))}
                             </div>
-                            <span className="w-5 text-left text-[9px] font-bold font-mono-dm text-muted-foreground/50 shrink-0">
+                            <span className="w-5 text-left text-[9px] font-bold font-mono text-muted-foreground/50 shrink-0">
                               {row}
                             </span>
                           </div>
@@ -328,7 +493,7 @@ export function EventPage() {
           <div className="p-5 space-y-4">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Seats selected</span>
-              <span className="font-bold font-mono-dm">
+              <span className="font-bold font-mono">
                 {selected.length === 0 ? (
                   <span className="text-muted-foreground font-normal">None</span>
                 ) : (
@@ -338,7 +503,7 @@ export function EventPage() {
             </div>
 
             {selectedSeatLabels && (
-              <div className="border border-border bg-muted/30 px-3 py-2 text-xs font-mono-dm text-muted-foreground break-words leading-relaxed">
+              <div className="border border-border bg-muted/30 px-3 py-2 text-xs font-mono text-muted-foreground break-words leading-relaxed">
                 {selectedSeatLabels}
               </div>
             )}
@@ -364,7 +529,14 @@ export function EventPage() {
             {phase === 'polling' && (
               <div className="flex items-center gap-2 border border-border bg-muted/30 px-3 py-2.5 text-xs text-muted-foreground">
                 <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
-                Processing — this may take a moment...
+                Finalizing your booking — this may take a moment...
+              </div>
+            )}
+
+            {phase === 'checkout' && (
+              <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/8 px-3 py-2.5 text-xs text-primary">
+                <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+                Complete payment in the Razorpay checkout window...
               </div>
             )}
 

@@ -231,6 +231,8 @@ services:
       MONGODB_DB: ticketflow_payments
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       PAYMENT_SUCCESS_RATE: ${PAYMENT_SUCCESS_RATE:-0.95}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
     depends_on:
       mongodb:
         condition: service_healthy

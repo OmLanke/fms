@@ -96,7 +96,7 @@ export function LandingPage() {
           {!loading && events.length > 0 && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Ticket className="h-3.5 w-3.5" />
-              <span className="font-mono-dm font-medium">{events.length}</span>
+              <span className="font-mono font-medium">{events.length}</span>
               <span>listed</span>
             </div>
           )}

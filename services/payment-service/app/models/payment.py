@@ -10,7 +10,7 @@ class PaymentDocument(Document):
     booking_id: str
     user_id: str
     amount: float
-    currency: str = "USD"
+    currency: str = "INR"
     status: str = "PENDING"  # PENDING | SUCCESS | FAILED
     reason: Optional[str] = None
     provider_ref: Optional[str] = None

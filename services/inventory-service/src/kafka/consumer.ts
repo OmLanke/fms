@@ -78,24 +78,24 @@ export async function startConsumer(producer: KafkaProducerHandle) {
           }
 
           case "ticketflow.seats.confirm": {
-            const { seatIds } = payload as { seatIds: string[] };
-            if (!Array.isArray(seatIds)) {
+            const { bookingId, seatIds } = payload as { bookingId: string; seatIds: string[] };
+            if (!bookingId || !Array.isArray(seatIds)) {
               console.error("[Kafka] Invalid seats.confirm payload:", payload);
               return;
             }
-            await confirmSeats(seatIds);
-            console.log(`[Inventory] Confirmed ${seatIds.length} seats`);
+            await confirmSeats(bookingId, seatIds);
+            console.log(`[Inventory] Confirmed ${seatIds.length} seats for booking ${bookingId}`);
             break;
           }
 
           case "ticketflow.seats.release": {
-            const { seatIds } = payload as { seatIds: string[] };
-            if (!Array.isArray(seatIds)) {
+            const { bookingId, seatIds } = payload as { bookingId: string; seatIds: string[] };
+            if (!bookingId || !Array.isArray(seatIds)) {
               console.error("[Kafka] Invalid seats.release payload:", payload);
               return;
             }
-            await releaseSeats(seatIds);
-            console.log(`[Inventory] Released ${seatIds.length} seats`);
+            await releaseSeats(bookingId, seatIds);
+            console.log(`[Inventory] Released ${seatIds.length} seats for booking ${bookingId}`);
             break;
           }
 

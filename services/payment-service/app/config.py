@@ -7,6 +7,8 @@ class Settings(BaseSettings):
     kafka_bootstrap_servers: str = "localhost:9092"
     payment_success_rate: float = 0.95
     port: int = 3005
+    razorpay_key_id: str
+    razorpay_key_secret: str
 
     class Config:
         env_file = ".env"

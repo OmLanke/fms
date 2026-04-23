@@ -1,6 +1,6 @@
 import { db } from "../db/client";
 import { seats } from "../db/schema";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { acquireSeatLock, releaseSeatLocks } from "../redis/client";
 import { config } from "../config";
 import crypto from "crypto";
@@ -61,64 +61,80 @@ export async function createSeatsForEvent(
 
 /**
  * Attempts to lock the requested seats for a booking.
- * Uses a Redis NX lock per seat plus a DB status update.
+ *
+ * Uses a Postgres transaction with SELECT FOR UPDATE SKIP LOCKED to atomically
+ * claim available seats at the DB level, eliminating the TOCTOU race that allowed
+ * two concurrent booking.initiated messages (from different Kafka partitions) to
+ * both see AVAILABLE before either committed a LOCKED status update.
+ *
+ * Redis NX locks are still acquired inside the transaction for TTL-based expiry:
+ * if payment times out the lock TTL releases the seats even if the saga stalls.
  */
 export async function lockSeats(
   bookingId: string,
   seatIds: string[]
 ): Promise<{ success: boolean; conflictingSeatIds?: string[] }> {
-  // Verify seats exist in DB and are AVAILABLE
-  const dbSeats = await db.select().from(seats).where(inArray(seats.id, seatIds));
+  return db.transaction(async (tx) => {
+    // SELECT FOR UPDATE SKIP LOCKED: rows already locked by a concurrent transaction
+    // are skipped rather than blocking, so we get an immediate result.
+    const availableSeats = await tx
+      .select()
+      .from(seats)
+      .where(and(inArray(seats.id, seatIds), eq(seats.status, "AVAILABLE")))
+      .for("update", { skipLocked: true });
 
-  if (dbSeats.length !== seatIds.length) {
-    const foundIds = new Set(dbSeats.map((s) => s.id));
-    const missing = seatIds.filter((id) => !foundIds.has(id));
-    return { success: false, conflictingSeatIds: missing };
-  }
-
-  const unavailable = dbSeats.filter((s) => s.status !== "AVAILABLE");
-  if (unavailable.length > 0) {
-    return { success: false, conflictingSeatIds: unavailable.map((s) => s.id) };
-  }
-
-  // Acquire Redis locks one-by-one; roll back on first failure
-  const lockedSoFar: string[] = [];
-  for (const seatId of seatIds) {
-    const acquired = await acquireSeatLock(seatId, bookingId, config.redis.lockTtl);
-    if (!acquired) {
-      await releaseSeatLocks(lockedSoFar);
-      return { success: false, conflictingSeatIds: [seatId] };
+    // If we got fewer rows than requested, some seats are unavailable or
+    // are currently being locked by another concurrent transaction.
+    if (availableSeats.length !== seatIds.length) {
+      const foundIds = new Set(availableSeats.map((s) => s.id));
+      const conflicting = seatIds.filter((id) => !foundIds.has(id));
+      return { success: false, conflictingSeatIds: conflicting };
     }
-    lockedSoFar.push(seatId);
-  }
 
-  // Persist LOCKED status to DB
-  await db
-    .update(seats)
-    .set({ status: "LOCKED", bookingId, updatedAt: new Date() })
-    .where(inArray(seats.id, seatIds));
+    // Acquire Redis NX locks for TTL-based expiry (payment timeout protection).
+    // Roll back all Redis locks on first failure.
+    const lockedSoFar: string[] = [];
+    for (const seatId of seatIds) {
+      const acquired = await acquireSeatLock(seatId, bookingId, config.redis.lockTtl);
+      if (!acquired) {
+        await releaseSeatLocks(lockedSoFar);
+        return { success: false, conflictingSeatIds: [seatId] };
+      }
+      lockedSoFar.push(seatId);
+    }
 
-  return { success: true };
+    // Persist LOCKED status within the same transaction (row locks held until commit).
+    await tx
+      .update(seats)
+      .set({ status: "LOCKED", bookingId, updatedAt: new Date() })
+      .where(inArray(seats.id, seatIds));
+
+    return { success: true };
+  });
 }
 
 /**
  * Releases previously locked seats back to AVAILABLE.
+ * Only transitions seats still owned by this bookingId to prevent a stale
+ * saga release from clobbering seats already re-locked by a new booking.
  */
-export async function releaseSeats(seatIds: string[]): Promise<void> {
+export async function releaseSeats(bookingId: string, seatIds: string[]): Promise<void> {
   await releaseSeatLocks(seatIds);
   await db
     .update(seats)
     .set({ status: "AVAILABLE", bookingId: null, updatedAt: new Date() })
-    .where(inArray(seats.id, seatIds));
+    .where(and(inArray(seats.id, seatIds), eq(seats.bookingId, bookingId)));
 }
 
 /**
  * Confirms locked seats as RESERVED (payment completed).
+ * Only transitions seats that are still LOCKED under this specific bookingId
+ * to guard against a stale saga event acting on seats re-acquired by another booking.
  */
-export async function confirmSeats(seatIds: string[]): Promise<void> {
+export async function confirmSeats(bookingId: string, seatIds: string[]): Promise<void> {
   await releaseSeatLocks(seatIds); // Redis lock no longer needed
   await db
     .update(seats)
     .set({ status: "RESERVED", updatedAt: new Date() })
-    .where(inArray(seats.id, seatIds));
+    .where(and(inArray(seats.id, seatIds), eq(seats.bookingId, bookingId)));
 }

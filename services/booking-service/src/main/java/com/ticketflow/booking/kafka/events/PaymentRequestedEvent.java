@@ -16,7 +16,7 @@ public class PaymentRequestedEvent {
     private String userId;
     private BigDecimal amount;
     @Builder.Default
-    private String currency = "USD";
+    private String currency = "INR";
     @Builder.Default
     private String timestamp = Instant.now().toString();
 }
