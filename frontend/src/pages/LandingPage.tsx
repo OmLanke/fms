@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import gsap from 'gsap'
-import { CalendarDays, MapPin, Ticket, Zap, Shield, ArrowRight } from 'lucide-react'
+import { CalendarDays, MapPin, Ticket, ArrowRight, ArrowUpRight } from 'lucide-react'
 import { Event, eventsApi } from '@/lib/api'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+
 const eventImage = '/Rock_Night.jpg'
 
 export function LandingPage() {
@@ -20,36 +22,32 @@ export function LandingPage() {
         const data = await eventsApi.getAll()
         setEvents(data.events ?? [])
       } catch {
-        setError('Could not load events. Ensure gateway is running on port 3000.')
+        setError('Could not load events. Ensure the gateway is running.')
       } finally {
         setLoading(false)
       }
     }
-
     load().catch(() => setError('Unexpected error while loading events.'))
   }, [])
 
   useEffect(() => {
     if (!heroRef.current) return
-
-    const timeline = gsap.timeline({ defaults: { ease: 'power3.out' } })
-    timeline.fromTo(
+    const tl = gsap.timeline({ defaults: { ease: 'power3.out' } })
+    tl.fromTo(
       heroRef.current.querySelectorAll('.hero-item'),
-      { opacity: 0, y: 32 },
-      { opacity: 1, y: 0, stagger: 0.1, duration: 0.9 }
+      { opacity: 0, y: 28 },
+      { opacity: 1, y: 0, stagger: 0.09, duration: 0.85 }
     )
-
     const cards = cardsRef.current?.querySelectorAll('.event-card')
-    if (cards && cards.length > 0) {
-      timeline.fromTo(
+    if (cards?.length) {
+      tl.fromTo(
         cards,
-        { opacity: 0, y: 24, scale: 0.97 },
-        { opacity: 1, y: 0, scale: 1, stagger: 0.07, duration: 0.65 },
+        { opacity: 0, y: 18 },
+        { opacity: 1, y: 0, stagger: 0.05, duration: 0.6 },
         '-=0.4'
       )
     }
-
-    return () => { timeline.kill() }
+    return () => { tl.kill() }
   }, [events.length])
 
   const featured = useMemo(() => events.slice(0, 6), [events])
@@ -57,109 +55,79 @@ export function LandingPage() {
   return (
     <main>
       {/* Hero */}
-      <section className="relative isolate overflow-hidden border-b border-white/[0.06]">
-        <div className="retro-grid-animated" />
-        {/* Background layers */}
-        <div className="absolute inset-0 -z-20 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(219,39,119,0.15),transparent)]" />
-        <div className="absolute inset-0 -z-20 dot-grid opacity-40" />
-        <div className="absolute -z-10 top-0 left-1/4 h-72 w-72 rounded-full bg-pink-500/5 blur-3xl" />
-        <div className="absolute -z-10 top-10 right-1/4 h-48 w-48 rounded-full bg-cyan-400/10 blur-3xl" />
-
-        {/* Floating decorative pills */}
-        <div className="absolute top-16 left-[8%] hidden xl:flex items-center gap-1.5 rounded-2xl border border-pink-500/20 bg-pink-500/5 px-3 py-1.5 text-xs font-mono text-pink-400/80 animate-float backdrop-blur-sm">
-          <span className="h-1.5 w-1.5 rounded-full bg-pink-500/60" />
-          redis://lock:seat
-        </div>
-        <div className="absolute top-24 right-[7%] hidden xl:flex items-center gap-1.5 rounded-2xl border border-cyan-400/20 bg-cyan-400/5 px-3 py-1.5 text-xs font-mono text-cyan-300/80 animate-float backdrop-blur-sm" style={{ animationDelay: '1s' }}>
-          <span className="h-1.5 w-1.5 rounded-full bg-cyan-400/60" />
-          booking.confirmed
-        </div>
-        <div className="absolute bottom-20 left-[12%] hidden xl:flex items-center gap-1.5 rounded-2xl border border-purple-500/20 bg-purple-500/5 px-3 py-1.5 text-xs font-mono text-purple-400/80 animate-float backdrop-blur-sm" style={{ animationDelay: '2s' }}>
-          <span className="h-1.5 w-1.5 rounded-full bg-purple-400/60" />
-          saga: choreography
-        </div>
-
-        <div ref={heroRef} className="mx-auto flex w-full max-w-7xl flex-col items-center gap-7 px-4 py-20 text-center md:px-6 md:py-28">
-          <div className="hero-item flex items-center gap-2 rounded-full border border-pink-500/20 bg-pink-500/10 px-4 py-1.5 text-xs font-semibold text-pink-400 backdrop-blur-sm">
-            <Zap className="h-3 w-3" />
-            Distributed Ticketing Platform
+      <section className="border-b border-border/50 dark:border-border">
+        <div ref={heroRef} className="mx-auto flex flex-col items-center gap-2 px-6 py-8 text-center md:py-16 lg:py-20 xl:gap-4">
+          <div className="hero-item mb-2 mt-4">
+            <span className="eyebrow text-muted-foreground uppercase tracking-widest text-xs">Distributed Ticketing Platform</span>
           </div>
 
-          <h1 className="hero-item max-w-4xl text-5xl font-black leading-[1.05] tracking-[-0.03em] md:text-7xl">
-            Book Live Experiences{' '}
-            <span className="text-gradient-retro">Without Seat Collisions</span>
+          <h1 className="hero-item leading-tighter max-w-3xl text-3xl font-semibold tracking-tight text-balance text-primary lg:leading-[1.1] lg:font-semibold xl:text-5xl xl:tracking-tighter">
+            Live Events,<br className="hidden md:block" />
+            Effortlessly Booked.
           </h1>
 
-          <p className="hero-item max-w-2xl text-base text-muted-foreground md:text-lg leading-relaxed">
-            TicketFlow uses microservices, Redis atomic locking, and async Kafka sagas to ensure fast and
-            safe seat booking — even under high concurrency.
+          <p className="hero-item max-w-2xl text-base text-balance text-muted-foreground sm:text-lg mb-8 mt-2">
+            Microservices, Redis atomic locking, and async Kafka sagas ensure
+            safe, fast seat booking — even under high concurrency.
           </p>
 
-          <div className="hero-item flex flex-wrap justify-center gap-3">
+          <div className="hero-item flex w-full items-center justify-center gap-2 pt-2">
             <a href="#events">
-              <Button size="lg" className="animate-pulse-glow gap-2 font-bold px-8 bg-pink-600 hover:bg-pink-500 text-white border-none">
-                Explore Events <ArrowRight className="h-4 w-4" />
+              <Button size="sm" className="h-[36px] rounded-lg gap-2">
+                Browse Events <ArrowRight className="h-3.5 w-3.5" />
               </Button>
             </a>
             <Link to="/auth">
-              <Button size="lg" variant="outline" className="border-white/10 hover:bg-white/5 font-bold px-8">
-                Sign In To Book
+              <Button size="sm" variant="ghost" className="h-[36px] rounded-lg">
+                Sign In to Book
               </Button>
             </Link>
-          </div>
-
-          {/* Feature pills */}
-          <div className="hero-item flex flex-wrap justify-center gap-3 pt-2 text-xs text-muted-foreground">
-            {[
-              { icon: Shield, label: 'Redis SETNX Seat Locking' },
-              { icon: Zap, label: 'Kafka Choreography Saga' },
-              { icon: Ticket, label: '202 Async Booking Flow' },
-            ].map(({ icon: Icon, label }) => (
-              <div key={label} className="flex items-center gap-1.5 rounded-full border border-white/8 bg-white/4 px-3 py-1.5">
-                <Icon className="h-3 w-3 text-primary/70" />
-                {label}
-              </div>
-            ))}
           </div>
         </div>
       </section>
 
-      {/* Events section */}
-      <section id="events" className="mx-auto w-full max-w-7xl px-4 py-16 md:px-6 md:py-20">
-        <div className="mb-10 flex items-end justify-between">
+      {/* Events */}
+      <section id="events" className="mx-auto max-w-7xl px-6 py-16 md:py-20">
+        <div className="flex items-end justify-between mb-10 pb-8 border-b border-border">
           <div>
-            <p className="eyebrow text-primary/60 mb-2">Live Events</p>
-            <h2 className="text-3xl font-black tracking-[-0.02em] md:text-4xl">Upcoming Events</h2>
-            <p className="mt-2 text-sm text-muted-foreground">Real events from the event service, routed through the gateway.</p>
+            <p className="eyebrow text-muted-foreground mb-3">Upcoming</p>
+            <h2 className="font-sans font-semibold tracking-tight text-4xl md:text-5xl leading-[1]">Events</h2>
           </div>
-          <div className="hidden items-center gap-2 text-sm text-muted-foreground md:flex rounded-full border border-white/8 bg-white/4 px-4 py-2">
-            <Ticket className="h-4 w-4 text-primary/60" />
-            <span className="font-mono font-medium">{events.length}</span> listed
-          </div>
+          {!loading && events.length > 0 && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Ticket className="h-3.5 w-3.5" />
+              <span className="font-mono-dm font-medium">{events.length}</span>
+              <span>listed</span>
+            </div>
+          )}
         </div>
 
-        {loading ? (
-          <div className="flex items-center gap-3 py-8 text-sm text-muted-foreground">
-            <div className="h-5 w-5 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+        {loading && (
+          <div className="flex items-center gap-3 py-12 text-sm text-muted-foreground">
+            <div className="spinner" />
             Loading events...
           </div>
-        ) : null}
-        {error ? (
-          <div className="rounded-xl border border-destructive/20 bg-destructive/8 px-4 py-3 text-sm text-destructive">
+        )}
+
+        {error && (
+          <div className="border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive mb-8">
             {error}
           </div>
-        ) : null}
+        )}
 
-        <div ref={cardsRef} className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        {/* Standard gap-6 grid spacing native to shadcn registry blocks */}
+        <div ref={cardsRef} className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {featured.map((event) => (
             <EventCard key={event.id} event={event} />
           ))}
         </div>
 
         {!loading && featured.length === 0 && !error && (
-          <div className="py-16 text-center">
-            <Ticket className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-            <p className="text-muted-foreground">No events available right now.</p>
+          <div className="py-24 text-center">
+            <div className="h-12 w-12 border border-border mx-auto mb-5 flex items-center justify-center">
+              <Ticket className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <p className="text-muted-foreground text-sm">No events available right now.</p>
           </div>
         )}
       </section>
@@ -169,53 +137,47 @@ export function LandingPage() {
 
 function EventCard({ event }: { event: Event }) {
   return (
-    <div className="event-card group relative rounded-2xl border border-white/8 bg-card overflow-hidden transition-all duration-300 hover:border-pink-500/40 hover:-translate-y-1 hover:shadow-[0_8px_40px_rgba(236,72,153,0.15)]">
-      {/* Top accent bar */}
-      <div className="h-0.5 w-full bg-gradient-to-r from-transparent via-pink-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-
-      <div className="relative aspect-video w-full overflow-hidden">
-        <img
-          src={eventImage}
-          alt={event.name}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent opacity-60" />
-      </div>
-
-      <div className="p-6 space-y-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-bold tracking-tight leading-snug truncate group-hover:text-pink-400 transition-colors">{event.name}</h3>
-            <p className="mt-1 text-sm text-muted-foreground line-clamp-2 leading-relaxed">{event.description}</p>
-          </div>
-          <div className="shrink-0 rounded-lg border border-white/8 bg-white/4 p-2">
-            <Ticket className="h-4 w-4 text-pink-500/60" />
-          </div>
+    <Card className="hover:bg-accent/40 hover:border-border/80 group overflow-hidden transition-all duration-300">
+      <Link to={`/events/${event.id}`} className="flex h-full flex-col">
+        <div className="aspect-[4/3] w-full overflow-hidden bg-muted">
+          <img
+            src={eventImage}
+            alt={event.name}
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+          />
         </div>
 
-        <div className="space-y-2">
+        <CardHeader className="px-6 py-4">
+          <CardTitle className="text-xl tracking-tight leading-none group-hover:text-foreground/80 transition-colors">
+            {event.name}
+          </CardTitle>
+          <CardDescription className="line-clamp-2 mt-1.5 leading-relaxed">
+            {event.description}
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent className="px-6 pb-4 flex-1 space-y-2">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <CalendarDays className="h-3.5 w-3.5 text-pink-500/50 shrink-0" />
+            <CalendarDays className="h-3.5 w-3.5 shrink-0" />
             <span>{formatDateTime(event.date)}</span>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <MapPin className="h-3.5 w-3.5 text-pink-500/50 shrink-0" />
+            <MapPin className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">{event.venue?.name ?? 'Venue TBA'}</span>
           </div>
-        </div>
+        </CardContent>
 
-        <div className="flex items-center justify-between pt-1 border-t border-white/6">
+        <CardFooter className="mt-auto flex items-center justify-between border-t border-border/50 bg-muted/10 px-6 py-4 group-hover:bg-muted/30 transition-colors">
           <div>
-            <p className="text-[10px] text-muted-foreground/60 font-medium uppercase tracking-widest mb-0.5">From</p>
-            <div className="text-xl font-black text-gradient-retro">{formatCurrency(event.price)}</div>
+            <p className="eyebrow text-muted-foreground mb-0.5">From</p>
+            <p className="font-sans font-semibold text-lg">{formatCurrency(event.price)}</p>
           </div>
-          <Link to={`/events/${event.id}`}>
-            <Button size="sm" className="gap-1.5 font-semibold bg-pink-600 hover:bg-pink-500 text-white border-none">
-              View Seats <ArrowRight className="h-3.5 w-3.5" />
-            </Button>
-          </Link>
-        </div>
-      </div>
-    </div>
+          <span className="flex items-center gap-1 text-xs font-semibold uppercase tracking-widest text-muted-foreground group-hover:text-foreground transition-colors">
+            View seats
+            <ArrowUpRight className="h-3.5 w-3.5" />
+          </span>
+        </CardFooter>
+      </Link>
+    </Card>
   )
 }

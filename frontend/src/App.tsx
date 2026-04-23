@@ -13,61 +13,60 @@ function Header() {
   const location = useLocation()
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-transparent backdrop-blur-2xl">
-      <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3.5 md:px-6">
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 group">
-          <span className="text-lg font-black tracking-tight text-gradient">TicketFlow</span>
+    <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-sm">
+      <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-3.5">
+        <Link to="/" className="flex items-center gap-2.5">
+          <div className="h-6 w-6 border border-foreground bg-foreground flex items-center justify-center shrink-0">
+            <Ticket className="h-3 w-3 text-background" strokeWidth={2.5} />
+          </div>
+          <span className="font-sans font-semibold tracking-tight text-[1.05rem] tracking-[-0.01em]">TicketFlow</span>
         </Link>
 
-        {/* Nav */}
         <nav className="flex items-center gap-1">
           <Link
             to="/"
-            className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-3 py-1.5 text-xs font-semibold uppercase tracking-widest transition-colors ${
               location.pathname === '/'
-                ? 'text-foreground bg-white/5'
-                : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
+                ? 'text-foreground'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            Home
+            Events
           </Link>
 
           {isAuthenticated ? (
             <>
               <Link
                 to="/bookings"
-                className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-colors ${
+                className={`px-3 py-1.5 text-xs font-semibold uppercase tracking-widest transition-colors ${
                   location.pathname === '/bookings'
-                    ? 'text-foreground bg-white/5'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
+                    ? 'text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                My Bookings
+                Bookings
               </Link>
 
-              {/* User avatar */}
-              <div className="ml-2 flex items-center gap-2 rounded-full border border-white/10 bg-white/5 pl-1 pr-3 py-1">
-                <div className="h-6 w-6 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-[10px] font-bold text-primary uppercase">
+              <div className="ml-3 flex items-center gap-2.5 border-l border-border pl-4">
+                <div className="h-6 w-6 border border-border bg-muted flex items-center justify-center text-[9px] font-bold text-foreground uppercase shrink-0">
                   {user?.email?.charAt(0) ?? 'U'}
                 </div>
-                <span className="hidden text-xs font-medium text-muted-foreground md:inline max-w-[140px] truncate">
+                <span className="hidden text-xs text-muted-foreground md:block max-w-[120px] truncate">
                   {user?.email}
                 </span>
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  onClick={logout}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  Sign out
+                </Button>
               </div>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={logout}
-                className="ml-1 text-muted-foreground hover:text-foreground hover:bg-white/5 text-sm"
-              >
-                Logout
-              </Button>
             </>
           ) : (
             <Link to="/auth" className="ml-2">
-              <Button size="sm" className="glow-sm font-semibold">Sign In</Button>
+              <Button size="xs">Sign In</Button>
             </Link>
           )}
         </nav>
@@ -82,9 +81,9 @@ function RequireAuth({ children }: { children: JSX.Element }) {
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-20 md:px-6 flex flex-col items-center gap-3">
-        <div className="h-8 w-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
-        <p className="text-sm text-muted-foreground">Loading account...</p>
+      <div className="mx-auto max-w-7xl px-6 py-24 flex flex-col items-center gap-4">
+        <div className="spinner" />
+        <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold">Loading account...</p>
       </div>
     )
   }

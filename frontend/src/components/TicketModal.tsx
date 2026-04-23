@@ -7,13 +7,13 @@ import { CheckCircle2, Clock, XCircle, Ban, Ticket } from 'lucide-react'
 function statusConfig(status: Booking['status']) {
   switch (status) {
     case 'CONFIRMED':
-      return { label: 'Confirmed', icon: CheckCircle2, color: '#10b981', bg: '#ecfdf5', border: '#6ee7b7' }
+      return { label: 'Confirmed', icon: CheckCircle2, color: '#16a34a', borderColor: '#bbf7d0' }
     case 'PENDING':
-      return { label: 'Pending', icon: Clock, color: '#f59e0b', bg: '#fffbeb', border: '#fcd34d' }
+      return { label: 'Pending', icon: Clock, color: '#d97706', borderColor: '#fde68a' }
     case 'FAILED':
-      return { label: 'Failed', icon: XCircle, color: '#ef4444', bg: '#fef2f2', border: '#fca5a5' }
+      return { label: 'Failed', icon: XCircle, color: '#dc2626', borderColor: '#fecaca' }
     default:
-      return { label: 'Cancelled', icon: Ban, color: '#6b7280', bg: '#f9fafb', border: '#d1d5db' }
+      return { label: 'Cancelled', icon: Ban, color: '#6b7280', borderColor: '#e5e7eb' }
   }
 }
 
@@ -43,159 +43,295 @@ export function TicketModal({ booking, children }: TicketModalProps) {
   return (
     <Dialog>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="w-full max-w-sm p-0 bg-transparent border-none shadow-none overflow-visible">
-
-        {/* Ticket */}
+      <DialogContent className="w-full max-w-[360px] p-0 bg-transparent border-none shadow-none overflow-visible">
         <div
           className="relative w-full select-none"
-          style={{ filter: 'drop-shadow(0 24px 48px rgba(0,0,0,0.35))' }}
+          style={{ filter: 'drop-shadow(0 20px 40px rgba(0,0,0,0.22))' }}
         >
-          {/* ── TOP HALF ── */}
+          {/* TOP HALF — dark */}
           <div
             style={{
-              background: isConfirmed
-                ? 'linear-gradient(135deg, #0f172a 0%, #0e4f5c 60%, #0f766e 100%)'
-                : 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
-              borderRadius: '20px 20px 0 0',
+              background: '#0f0f0f',
               padding: '28px 28px 24px',
               position: 'relative',
               overflow: 'hidden',
             }}
           >
-            {/* Dot grid texture */}
+            {/* Subtle grain texture */}
             <div
               style={{
-                position: 'absolute', inset: 0, opacity: 0.15,
-                backgroundImage: 'radial-gradient(rgba(255,255,255,0.6) 1px, transparent 1px)',
-                backgroundSize: '20px 20px',
-              }}
-            />
-
-            {/* Diagonal shine */}
-            <div
-              style={{
-                position: 'absolute', top: '-60px', right: '-40px',
-                width: '180px', height: '180px', borderRadius: '50%',
-                background: 'rgba(255,255,255,0.06)',
+                position: 'absolute',
+                inset: 0,
+                opacity: 0.06,
+                backgroundImage:
+                  'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.75\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\' opacity=\'1\'/%3E%3C/svg%3E")',
+                backgroundSize: '160px 160px',
               }}
             />
 
             {/* Header row */}
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+            <div
+              style={{
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '24px',
+              }}
+            >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: '8px', padding: '6px' }}>
-                  <Ticket style={{ width: '16px', height: '16px', color: 'rgba(255,255,255,0.9)' }} />
+                <div
+                  style={{
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    padding: '5px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Ticket
+                    style={{ width: '14px', height: '14px', color: 'rgba(255,255,255,0.8)' }}
+                    strokeWidth={2.5}
+                  />
                 </div>
-                <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.55)' }}>
+                <span
+                  style={{
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    letterSpacing: '0.2em',
+                    textTransform: 'uppercase',
+                    color: 'rgba(255,255,255,0.45)',
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
                   TicketFlow
                 </span>
               </div>
 
               {/* Status badge */}
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: '5px',
-                background: config.bg, border: `1px solid ${config.border}`,
-                borderRadius: '999px', padding: '4px 10px 4px 8px',
-              }}>
-                <StatusIcon style={{ width: '12px', height: '12px', color: config.color }} />
-                <span style={{ fontSize: '11px', fontWeight: 700, color: config.color }}>{config.label}</span>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  border: `1px solid ${config.borderColor}`,
+                  padding: '3px 10px 3px 8px',
+                  background: 'transparent',
+                }}
+              >
+                <StatusIcon
+                  style={{ width: '11px', height: '11px', color: config.color, flexShrink: 0 }}
+                />
+                <span
+                  style={{
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    color: config.color,
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  {config.label}
+                </span>
               </div>
             </div>
 
             {/* Event name */}
             <div style={{ position: 'relative' }}>
-              <p style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)', marginBottom: '6px' }}>
+              <p
+                style={{
+                  fontSize: '10px',
+                  fontWeight: 700,
+                  letterSpacing: '0.15em',
+                  textTransform: 'uppercase',
+                  color: 'rgba(255,255,255,0.35)',
+                  marginBottom: '6px',
+                  fontFamily: "'DM Sans', sans-serif",
+                }}
+              >
                 Event
               </p>
-              <h2 style={{ fontSize: '22px', fontWeight: 900, color: '#ffffff', lineHeight: 1.15, letterSpacing: '-0.02em', margin: 0 }}>
+              <h2
+                style={{
+                  fontSize: '22px',
+                  fontWeight: 500,
+                  color: '#ffffff',
+                  lineHeight: 1.15,
+                  letterSpacing: '-0.02em',
+                  margin: 0,
+                  fontFamily: "'Playfair Display', Georgia, serif",
+                }}
+              >
                 {booking.eventName}
               </h2>
             </div>
           </div>
 
-          {/* ── TEAR LINE ── */}
-          <div style={{ position: 'relative', height: '0', display: 'flex', alignItems: 'center' }}>
-            {/* Dashed line */}
-            <div style={{
-              width: '100%', height: '0',
-              borderTop: '1.5px dashed rgba(255,255,255,0.12)',
-            }} />
-          </div>
-
-          {/* ── BOTTOM HALF ── */}
+          {/* TEAR LINE */}
           <div
             style={{
-              background: '#ffffff',
-              borderRadius: '0 0 20px 20px',
-              padding: '24px 28px 28px',
+              position: 'relative',
+              height: '0',
+              display: 'flex',
+              alignItems: 'center',
             }}
           >
+            <div
+              style={{
+                width: '100%',
+                height: '0',
+                borderTop: '1.5px dashed rgba(0,0,0,0.15)',
+              }}
+            />
+          </div>
+
+          {/* BOTTOM HALF — white */}
+          <div style={{ background: '#ffffff', padding: '24px 28px 28px' }}>
             {/* Info grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px', marginBottom: '20px' }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '16px',
+                marginBottom: '20px',
+              }}
+            >
               <InfoCell label="Booking Ref" value={`#${shortId}`} mono />
               <InfoCell label="Issued" value={formatDateTime(booking.createdAt)} />
-              <InfoCell label="Seats" value={`${booking.seatIds.length} seat${booking.seatIds.length !== 1 ? 's' : ''}`} />
+              <InfoCell
+                label="Seats"
+                value={`${booking.seatIds.length} seat${booking.seatIds.length !== 1 ? 's' : ''}`}
+              />
               <InfoCell label="Total Paid" value={formatCurrency(booking.totalAmount)} accent />
             </div>
 
             {/* Divider */}
-            <div style={{ borderTop: '1px dashed #e2e8f0', margin: '0 0 20px' }} />
+            <div
+              style={{
+                borderTop: '1px dashed #e5e7eb',
+                margin: '0 0 20px',
+              }}
+            />
 
-            {/* QR + booking ID row */}
+            {/* QR + booking ID */}
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#94a3b8', marginBottom: '6px' }}>
+                <p
+                  style={{
+                    fontSize: '9px',
+                    fontWeight: 700,
+                    letterSpacing: '0.16em',
+                    textTransform: 'uppercase',
+                    color: '#9ca3af',
+                    marginBottom: '6px',
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
                   Full Booking ID
                 </p>
-                <p style={{ fontFamily: 'monospace', fontSize: '10px', color: '#64748b', wordBreak: 'break-all', lineHeight: 1.6, margin: 0 }}>
+                <p
+                  style={{
+                    fontFamily: "'DM Mono', monospace",
+                    fontSize: '9.5px',
+                    color: '#6b7280',
+                    wordBreak: 'break-all',
+                    lineHeight: 1.6,
+                    margin: 0,
+                  }}
+                >
                   {booking.id}
                 </p>
                 {isConfirmed && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '10px' }}>
-                    <CheckCircle2 style={{ width: '11px', height: '11px', color: '#10b981' }} />
-                    <span style={{ fontSize: '10px', fontWeight: 600, color: '#10b981' }}>Valid admission ticket</span>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      marginTop: '10px',
+                    }}
+                  >
+                    <CheckCircle2
+                      style={{ width: '10px', height: '10px', color: '#16a34a', flexShrink: 0 }}
+                    />
+                    <span
+                      style={{
+                        fontSize: '9px',
+                        fontWeight: 700,
+                        color: '#16a34a',
+                        fontFamily: "'DM Sans', sans-serif",
+                        letterSpacing: '0.03em',
+                      }}
+                    >
+                      Valid admission ticket
+                    </span>
                   </div>
                 )}
               </div>
 
               {/* QR Code */}
-              <div style={{
-                flexShrink: 0, borderRadius: '12px', padding: '8px',
-                border: '1px solid #e2e8f0', background: '#fff',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-              }}>
+              <div
+                style={{
+                  flexShrink: 0,
+                  padding: '7px',
+                  border: '1px solid #e5e7eb',
+                  background: '#fff',
+                }}
+              >
                 <QRCodeSVG
                   value={qrPayload}
-                  size={80}
+                  size={76}
                   bgColor="#ffffff"
-                  fgColor="#0f172a"
+                  fgColor="#0f0f0f"
                   level="M"
                 />
               </div>
             </div>
 
-            {/* Bottom brand bar */}
-            <div style={{
-              marginTop: '20px', paddingTop: '14px',
-              borderTop: '1px solid #f1f5f9',
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            }}>
-              <span style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#cbd5e1' }}>
-                ticketflow.dev
+            {/* Bottom bar */}
+            <div
+              style={{
+                marginTop: '20px',
+                paddingTop: '14px',
+                borderTop: '1px solid #f3f4f6',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <span
+                style={{
+                  fontSize: '9px',
+                  fontWeight: 700,
+                  letterSpacing: '0.22em',
+                  textTransform: 'uppercase',
+                  color: '#d1d5db',
+                  fontFamily: "'DM Sans', sans-serif",
+                }}
+              >
+                ticketflow
               </span>
-              <span style={{ fontFamily: 'monospace', fontSize: '9px', color: '#cbd5e1' }}>
+              <span
+                style={{
+                  fontFamily: "'DM Mono', monospace",
+                  fontSize: '9px',
+                  color: '#d1d5db',
+                }}
+              >
                 {shortId}
               </span>
             </div>
           </div>
         </div>
-
       </DialogContent>
     </Dialog>
   )
 }
 
-function InfoCell({ label, value, mono, accent }: {
+function InfoCell({
+  label,
+  value,
+  mono,
+  accent,
+}: {
   label: string
   value: string
   mono?: boolean
@@ -203,17 +339,33 @@ function InfoCell({ label, value, mono, accent }: {
 }) {
   return (
     <div>
-      <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#94a3b8', marginBottom: '4px' }}>
+      <p
+        style={{
+          fontSize: '9px',
+          fontWeight: 700,
+          letterSpacing: '0.16em',
+          textTransform: 'uppercase',
+          color: '#9ca3af',
+          marginBottom: '4px',
+          fontFamily: "'DM Sans', sans-serif",
+        }}
+      >
         {label}
       </p>
-      <p style={{
-        fontSize: accent ? '18px' : '13px',
-        fontWeight: 800,
-        color: accent ? '#0e7490' : '#0f172a',
-        fontFamily: mono ? 'monospace' : undefined,
-        margin: 0,
-        letterSpacing: accent ? '-0.02em' : undefined,
-      }}>
+      <p
+        style={{
+          fontSize: accent ? '18px' : '13px',
+          fontWeight: accent ? 500 : 700,
+          color: '#0f0f0f',
+          fontFamily: accent
+            ? "'Playfair Display', serif"
+            : mono
+            ? "'DM Mono', monospace"
+            : "'DM Sans', sans-serif",
+          margin: 0,
+          letterSpacing: accent ? '-0.02em' : mono ? '0.02em' : undefined,
+        }}
+      >
         {value}
       </p>
     </div>

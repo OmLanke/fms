@@ -37,7 +37,6 @@ export function AuthPage() {
     event.preventDefault()
     setError(null)
     setLoading(true)
-
     try {
       if (mode === 'register') {
         const registered = await authApi.register({ name, email, password })
@@ -55,130 +54,136 @@ export function AuthPage() {
   }
 
   return (
-    <main className="relative isolate min-h-[calc(100vh-65px)] overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(34,211,238,0.1),transparent)]" />
-      <div className="absolute inset-0 -z-10 dot-grid opacity-30" />
+    <main className="min-h-[calc(100vh-57px)] border-b border-border">
+      <div className="mx-auto grid min-h-[calc(100vh-57px)] max-w-5xl gap-0 md:grid-cols-2">
 
-      <div className="mx-auto flex min-h-[calc(100vh-65px)] w-full max-w-5xl items-center px-4 py-12 md:px-6">
-        <div className="w-full grid md:grid-cols-2 gap-12 items-center">
-
-          {/* Left — branding */}
-          <div className="hidden md:block space-y-8">
-            <div className="space-y-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
-                <Ticket className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <h2 className="text-3xl font-black tracking-[-0.025em]">
-                  {mode === 'login' ? 'Welcome back.' : 'Join TicketFlow.'}
-                </h2>
-                <p className="mt-2 text-muted-foreground leading-relaxed">
-                  {mode === 'login'
-                    ? 'Sign in to manage your bookings and discover upcoming events.'
-                    : 'Create an account to start booking seats at live events.'}
-                </p>
-              </div>
+        {/* Left — branding panel */}
+        <div className="hidden md:flex flex-col justify-between border-r border-border p-10 bg-muted/10">
+          <div>
+            <div className="h-10 w-10 border border-border bg-primary flex items-center justify-center rounded-md mb-8 shadow-sm">
+              <Ticket className="h-5 w-5 text-primary-foreground" strokeWidth={2.5} />
             </div>
 
-            <div className="space-y-3">
-              {features.map(({ icon: Icon, title, desc }) => (
-                <div key={title} className="flex items-start gap-3 rounded-xl border border-white/6 bg-white/3 p-3.5">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10">
-                    <Icon className="h-4 w-4 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold">{title}</p>
-                    <p className="text-xs text-muted-foreground">{desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <h2 className="font-sans font-semibold tracking-tight text-3xl mb-3">
+              {mode === 'login' ? 'Welcome back.' : 'Join TicketFlow.'}
+            </h2>
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
+              {mode === 'login'
+                ? 'Sign in to manage your bookings and discover upcoming events.'
+                : 'Create an account to start booking seats at live events.'}
+            </p>
           </div>
 
-          {/* Right — form */}
-          <div className="rounded-2xl border border-white/8 bg-card p-7 shadow-2xl">
-            <div className="mb-6">
-              <h3 className="text-xl font-black tracking-tight">
-                {mode === 'login' ? 'Sign In' : 'Create Account'}
-              </h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {mode === 'login'
-                  ? 'Enter your credentials to continue.'
-                  : 'Fill in the details to get started.'}
-              </p>
-            </div>
+          <div className="space-y-0 rounded-xl border border-border bg-card/50 overflow-hidden shadow-sm">
+            {features.map(({ icon: Icon, title, desc }, i) => (
+              <div
+                key={title}
+                className={`flex items-start gap-4 p-4 ${i < features.length - 1 ? 'border-b border-border' : ''}`}
+              >
+                <div className="h-8 w-8 border border-border bg-background flex items-center justify-center rounded-md shrink-0 shadow-sm">
+                  <Icon className="h-4 w-4 text-foreground" strokeWidth={2} />
+                </div>
+                <div className="grid gap-1">
+                  <p className="text-sm font-medium leading-none">{title}</p>
+                  <p className="text-sm text-muted-foreground">{desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
 
-            <form className="space-y-4" onSubmit={onSubmit}>
-              {mode === 'register' && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="name" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Full Name
+        {/* Right — form */}
+        <div className="flex items-center justify-center p-8 md:p-12">
+          <div className="w-full max-w-[350px]">
+            <div className="mb-8">
+              <div className="mb-8 flex flex-col gap-2 text-center">
+                <h1 className="text-2xl font-semibold tracking-tight">
+                  {mode === 'login' ? 'Welcome back' : 'Create an account'}
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  {mode === 'login'
+                    ? 'Enter your email and password to log in.'
+                    : 'Enter your details below to get started.'}
+                </p>
+              </div>
+
+              <form className="grid gap-6" onSubmit={onSubmit}>
+                {mode === 'register' && (
+                  <div className="grid gap-2">
+                    <Label htmlFor="name" className="text-muted-foreground">
+                      Full Name
+                    </Label>
+                    <Input
+                      id="name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required
+                      minLength={2}
+                      placeholder="Your full name"
+                    />
+                  </div>
+                )}
+
+                <div className="grid gap-2">
+                  <Label htmlFor="email">
+                    Email
                   </Label>
                   <Input
-                    id="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     required
-                    minLength={2}
-                    placeholder="Your full name"
-                    className="border-white/10 bg-white/4 focus:border-primary/40 focus:bg-white/6 placeholder:text-muted-foreground/40"
+                    placeholder="m@example.com"
                   />
                 </div>
-              )}
 
-              <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Email
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  placeholder="you@example.com"
-                  className="border-white/10 bg-white/4 focus:border-primary/40 focus:bg-white/6 placeholder:text-muted-foreground/40"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="password" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Password
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  placeholder="••••••••"
-                  className="border-white/10 bg-white/4 focus:border-primary/40 focus:bg-white/6 placeholder:text-muted-foreground/40"
-                />
-              </div>
-
-              {error && (
-                <div className="rounded-xl border border-destructive/20 bg-destructive/8 px-3 py-2.5 text-xs text-destructive">
-                  {error}
+                <div className="grid gap-2">
+                  <Label htmlFor="password">
+                    Password
+                  </Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    placeholder="••••••••"
+                  />
                 </div>
-              )}
 
-              <Button className="w-full font-bold gap-2 mt-2" size="lg" type="submit" disabled={loading}>
-                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : 'Create Account'}
-              </Button>
-            </form>
+                {error && (
+                  <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                    {error}
+                  </div>
+                )}
 
-            <div className="mt-5 text-center text-xs text-muted-foreground border-t border-white/6 pt-5">
-              {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}{' '}
-              <button
-                type="button"
-                onClick={() => { setMode((m) => (m === 'login' ? 'register' : 'login')); setError(null) }}
-                className="font-semibold text-primary hover:underline"
-              >
-                {mode === 'login' ? 'Register' : 'Sign In'}
-              </button>
+                <Button className="w-full gap-2" type="submit" disabled={loading}>
+                  {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {loading
+                    ? 'Please wait...'
+                    : mode === 'login'
+                      ? 'Sign In'
+                      : 'Create account'}
+                </Button>
+              </form>
+
+              <div className="mt-10 pt-6 border-t border-border text-center">
+                <p className="text-xs text-muted-foreground">
+                  {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode((m) => (m === 'login' ? 'register' : 'login'))
+                      setError(null)
+                    }}
+                    className="font-semibold text-foreground underline underline-offset-2 hover:opacity-70 transition-opacity"
+                  >
+                    {mode === 'login' ? 'Register' : 'Sign In'}
+                  </button>
+                </p>
+              </div>
             </div>
           </div>
         </div>

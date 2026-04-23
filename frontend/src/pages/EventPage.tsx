@@ -15,32 +15,6 @@ const SECTION_LABELS: Record<string, string> = {
   BALCONY: 'Balcony',
   GENERAL: 'General Admission',
 }
-const SECTION_STYLES: Record<string, { bg: string; border: string; label: string; accent: string }> = {
-  VIP: {
-    bg: 'bg-amber-500/5',
-    border: 'border-amber-500/20',
-    label: 'text-amber-400',
-    accent: 'bg-amber-400',
-  },
-  FLOOR: {
-    bg: 'bg-primary/5',
-    border: 'border-primary/20',
-    label: 'text-primary',
-    accent: 'bg-primary',
-  },
-  BALCONY: {
-    bg: 'bg-violet-500/5',
-    border: 'border-violet-500/20',
-    label: 'text-violet-400',
-    accent: 'bg-violet-400',
-  },
-  GENERAL: {
-    bg: 'bg-white/3',
-    border: 'border-white/10',
-    label: 'text-muted-foreground',
-    accent: 'bg-muted-foreground',
-  },
-}
 
 function groupBySection(seats: Seat[]): Map<string, Map<string, Seat[]>> {
   const sections = new Map<string, Map<string, Seat[]>>()
@@ -72,16 +46,18 @@ function SeatButton({
 }) {
   const isTaken = seat.status === 'RESERVED' || seat.status === 'LOCKED'
 
-  let cls = 'w-8 h-8 rounded-t-full border text-[9px] font-bold transition-all duration-150 flex items-center justify-center '
+  let cls =
+    'w-8 h-8 border text-[9px] font-bold font-mono-dm transition-all duration-100 flex items-center justify-center shrink-0 rounded-none '
 
   if (isTaken) {
-    cls += 'bg-white/5 border-white/10 text-muted-foreground/40 cursor-not-allowed'
+    cls += 'bg-muted border-border text-muted-foreground/30 cursor-not-allowed'
   } else if (isSelected) {
-    cls += 'bg-primary border-primary text-primary-foreground scale-110 shadow-[0_0_12px_rgba(34,211,238,0.4)] cursor-pointer'
+    cls += 'bg-foreground border-foreground text-background cursor-pointer'
   } else if (disabled) {
-    cls += 'bg-white/5 border-white/8 text-muted-foreground/40 cursor-not-allowed'
+    cls += 'bg-muted border-border text-muted-foreground/30 cursor-not-allowed'
   } else {
-    cls += 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30 hover:border-emerald-400/60 hover:scale-110 cursor-pointer'
+    cls +=
+      'bg-background border-border text-muted-foreground hover:bg-foreground hover:border-foreground hover:text-background cursor-pointer'
   }
 
   return (
@@ -111,10 +87,12 @@ export function EventPage() {
 
   useEffect(() => {
     if (!id) return
-
     const load = async () => {
       try {
-        const [eventData, seatData] = await Promise.all([eventsApi.getById(id), inventoryApi.getSeats(id)])
+        const [eventData, seatData] = await Promise.all([
+          eventsApi.getById(id),
+          inventoryApi.getSeats(id),
+        ])
         setEvent(eventData)
         setSeats(seatData.seats)
       } catch {
@@ -123,12 +101,17 @@ export function EventPage() {
         setLoading(false)
       }
     }
-
     load().catch(() => setError('Unexpected error while loading event.'))
   }, [id])
 
-  const availableSeats = useMemo(() => seats.filter((seat) => seat.status === 'AVAILABLE'), [seats])
-  const total = useMemo(() => (event ? event.price * selected.length : 0), [event, selected.length])
+  const availableSeats = useMemo(
+    () => seats.filter((s) => s.status === 'AVAILABLE'),
+    [seats]
+  )
+  const total = useMemo(
+    () => (event ? event.price * selected.length : 0),
+    [event, selected.length]
+  )
   const grouped = useMemo(() => groupBySection(seats), [seats])
   const selectedSeatLabels = useMemo(
     () =>
@@ -140,41 +123,42 @@ export function EventPage() {
   )
 
   const toggleSeat = (seatId: string) => {
-    setSelected((current) =>
-      current.includes(seatId) ? current.filter((idValue) => idValue !== seatId) : [...current, seatId]
+    setSelected((curr) =>
+      curr.includes(seatId) ? curr.filter((i) => i !== seatId) : [...curr, seatId]
     )
   }
 
   const createBooking = async () => {
     if (!id || selected.length === 0) return
-
     if (!isAuthenticated) {
       navigate('/auth', { state: { from: `/events/${id}` } })
       return
     }
-
     setPhase('submitting')
     setError(null)
-
     try {
-      const { id: bookingId } = await bookingsApi.create({ eventId: id, eventName: event!.name, seatIds: selected, totalAmount: total })
+      const { id: bookingId } = await bookingsApi.create({
+        eventId: id,
+        eventName: event!.name,
+        seatIds: selected,
+        totalAmount: total,
+      })
       setPhase('polling')
       const booking = await pollBookingStatus(bookingId)
-
       if (booking.status === 'CONFIRMED') {
         setPhase('done')
         navigate('/bookings')
       } else {
         setPhase('idle')
-        setError('Booking could not be confirmed. The seats may have been taken or payment failed.')
+        setError(
+          'Booking could not be confirmed. The seats may have been taken.'
+        )
       }
     } catch (err: unknown) {
       setPhase('idle')
-      if (err instanceof Error) {
-        setError(err.message)
-      } else {
-        setError('Booking failed. Please try again.')
-      }
+      setError(
+        err instanceof Error ? err.message : 'Booking failed. Please try again.'
+      )
     }
   }
 
@@ -188,8 +172,8 @@ export function EventPage() {
 
   if (loading) {
     return (
-      <main className="mx-auto max-w-7xl px-4 py-20 md:px-6 flex items-center gap-3 text-sm text-muted-foreground">
-        <div className="h-5 w-5 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+      <main className="mx-auto max-w-7xl px-6 py-20 flex items-center gap-3 text-sm text-muted-foreground">
+        <div className="spinner" />
         Loading event...
       </main>
     )
@@ -197,11 +181,11 @@ export function EventPage() {
 
   if (!event) {
     return (
-      <main className="mx-auto max-w-7xl px-4 py-16 md:px-6">
-        <div className="rounded-xl border border-destructive/20 bg-destructive/8 px-4 py-3 text-sm text-destructive mb-4">
+      <main className="mx-auto max-w-7xl px-6 py-16">
+        <div className="border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive mb-4">
           Event not found.
         </div>
-        <Link to="/" className="text-sm font-medium text-primary hover:underline">
+        <Link to="/" className="text-xs font-semibold uppercase tracking-widest underline underline-offset-2">
           Back to events
         </Link>
       </main>
@@ -215,75 +199,83 @@ export function EventPage() {
   )
 
   return (
-    <main className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-10 md:grid-cols-[1.3fr_0.7fr] md:px-6">
+    <main className="mx-auto grid w-full max-w-7xl gap-6 px-6 py-10 md:grid-cols-[1fr_300px]">
       <section className="space-y-6 min-w-0">
-        {/* Back link */}
-        <Link to="/" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors group">
+        {/* Back */}
+        <Link
+          to="/"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors group"
+        >
           <ChevronLeft className="h-3.5 w-3.5 group-hover:-translate-x-0.5 transition-transform" />
           All Events
         </Link>
 
         {/* Event header */}
-        <div>
-          <h1 className="text-3xl font-black tracking-[-0.025em] md:text-4xl leading-tight">{event.name}</h1>
-          <p className="mt-2 text-muted-foreground leading-relaxed">{event.description}</p>
+        <div className="pb-6 border-b border-border">
+          <h1 className="font-sans font-semibold tracking-tight text-4xl md:text-5xl leading-[1.05] tracking-[-0.02em] mb-3">
+            {event.name}
+          </h1>
+          <p className="text-muted-foreground text-sm leading-relaxed mb-5">
+            {event.description}
+          </p>
 
-          <div className="mt-4 flex flex-wrap gap-2">
-            <div className="flex items-center gap-1.5 rounded-lg border border-white/8 bg-white/4 px-3 py-1.5 text-xs text-muted-foreground">
-              <CalendarDays className="h-3.5 w-3.5 text-primary/50" />
+          <div className="flex flex-wrap gap-2">
+            <div className="flex items-center gap-1.5 border border-border px-3 py-1.5 text-xs text-muted-foreground">
+              <CalendarDays className="h-3.5 w-3.5 shrink-0" />
               {formatDateTime(event.date)}
             </div>
-            <div className="flex items-center gap-1.5 rounded-lg border border-white/8 bg-white/4 px-3 py-1.5 text-xs text-muted-foreground">
-              <MapPin className="h-3.5 w-3.5 text-primary/50" />
+            <div className="flex items-center gap-1.5 border border-border px-3 py-1.5 text-xs text-muted-foreground">
+              <MapPin className="h-3.5 w-3.5 shrink-0" />
               {event.venue?.name ?? 'Venue TBA'}
             </div>
-            <div className="flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/8 px-3 py-1.5 text-xs text-emerald-400">
-              <Users className="h-3.5 w-3.5" />
-              {availableSeats.length} seats available
+            <div className="flex items-center gap-1.5 border border-border px-3 py-1.5 text-xs text-foreground">
+              <Users className="h-3.5 w-3.5 shrink-0" />
+              {availableSeats.length} available
             </div>
           </div>
         </div>
 
         {/* Seat map */}
-        <div className="rounded-2xl border border-white/8 bg-card overflow-hidden">
-          <div className="border-b border-white/6 px-5 py-4">
-            <h2 className="text-base font-bold">Select Seats</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Click available seats to select them</p>
+        <div className="ring-1 ring-foreground/5 shadow-sm">
+          <div className="border-b border-border px-5 py-4">
+            <p className="eyebrow text-muted-foreground">Select Seats</p>
           </div>
 
-          <div className="p-5 space-y-5">
+          <div className="p-5 space-y-6">
             {seats.length === 0 ? (
-              <div className="py-12 text-center">
-                <Ticket className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground">No seats available for this event.</p>
+              <div className="py-16 text-center">
+                <div className="h-12 w-12 border border-border mx-auto mb-4 flex items-center justify-center">
+                  <Ticket className="h-5 w-5 text-muted-foreground/50" />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  No seats available for this event.
+                </p>
               </div>
             ) : (
               <>
-                {/* Stage */}
-                <div className="flex flex-col items-center gap-1.5">
-                  <div className="w-3/5 rounded-xl bg-gradient-to-b from-white/10 to-white/5 border border-white/10 py-3 text-center text-xs font-bold tracking-[0.3em] text-muted-foreground/70 uppercase shadow-inner">
+                {/* Stage indicator */}
+                <div className="flex flex-col items-center gap-1">
+                  <div className="w-1/2 border border-border bg-muted/50 py-2.5 text-center text-[9px] font-bold tracking-[0.35em] text-muted-foreground uppercase">
                     STAGE
                   </div>
-                  <div className="h-5 w-3/5 bg-gradient-to-b from-white/5 to-transparent rounded-b-2xl" />
+                  <div className="w-1/2 h-3 bg-gradient-to-b from-muted/30 to-transparent" />
                 </div>
 
                 {/* Sections */}
                 {sortedSections.map((section) => {
                   const rows = grouped.get(section)!
-                  const style = SECTION_STYLES[section] ?? SECTION_STYLES.GENERAL
                   const label = SECTION_LABELS[section] ?? section
-
                   return (
-                    <div key={section} className={`rounded-xl border p-4 ${style.bg} ${style.border}`}>
-                      <div className={`mb-3 flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-[0.18em] ${style.label}`}>
-                        <div className={`h-1 w-8 rounded-full ${style.accent} opacity-60`} />
-                        {label}
-                        <div className={`h-1 w-8 rounded-full ${style.accent} opacity-60`} />
+                    <div key={section} className="border border-border">
+                      <div className="border-b border-border px-4 py-2.5 flex items-center justify-center">
+                        <span className="eyebrow text-muted-foreground">{label}</span>
                       </div>
-                      <div className="space-y-2">
+                      <div className="p-4 space-y-2">
                         {[...rows.entries()].map(([row, rowSeats]) => (
                           <div key={row} className="flex items-center gap-2">
-                            <span className="w-5 text-right text-[10px] font-bold text-muted-foreground/50">{row}</span>
+                            <span className="w-5 text-right text-[9px] font-bold font-mono-dm text-muted-foreground/50 shrink-0">
+                              {row}
+                            </span>
                             <div className="flex flex-1 flex-wrap justify-center gap-1">
                               {rowSeats.map((seat) => (
                                 <SeatButton
@@ -295,7 +287,9 @@ export function EventPage() {
                                 />
                               ))}
                             </div>
-                            <span className="w-5 text-left text-[10px] font-bold text-muted-foreground/50">{row}</span>
+                            <span className="w-5 text-left text-[9px] font-bold font-mono-dm text-muted-foreground/50 shrink-0">
+                              {row}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -304,17 +298,17 @@ export function EventPage() {
                 })}
 
                 {/* Legend */}
-                <div className="flex flex-wrap justify-center gap-5 pt-1 text-xs text-muted-foreground/60">
-                  <div className="flex items-center gap-1.5">
-                    <div className="h-4 w-4 rounded-t-full bg-emerald-500/20 border border-emerald-500/40" />
+                <div className="flex flex-wrap justify-center gap-6 pt-2 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <div className="h-3.5 w-3.5 border border-border bg-background" />
                     Available
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="h-4 w-4 rounded-t-full bg-primary border border-primary shadow-[0_0_8px_rgba(34,211,238,0.4)]" />
+                  <div className="flex items-center gap-2">
+                    <div className="h-3.5 w-3.5 border border-foreground bg-foreground" />
                     Selected
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="h-4 w-4 rounded-t-full bg-white/5 border border-white/10" />
+                  <div className="flex items-center gap-2">
+                    <div className="h-3.5 w-3.5 border border-border bg-muted" />
                     Taken
                   </div>
                 </div>
@@ -326,76 +320,67 @@ export function EventPage() {
 
       {/* Booking sidebar */}
       <aside>
-        <div className="sticky top-24 rounded-2xl border border-white/8 bg-card overflow-hidden">
-          {/* Header */}
-          <div className="border-b border-white/6 px-5 py-4">
-            <h2 className="text-base font-bold">Booking Summary</h2>
+        <div className="sticky top-20 ring-1 ring-foreground/5 shadow-sm">
+          <div className="border-b border-border px-5 py-4">
+            <p className="eyebrow text-muted-foreground">Booking Summary</p>
           </div>
 
           <div className="p-5 space-y-4">
-            {/* Selected count */}
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Seats selected</span>
-              <span className="font-bold tabular-nums">
+              <span className="font-bold font-mono-dm">
                 {selected.length === 0 ? (
-                  <span className="text-muted-foreground/60">None</span>
+                  <span className="text-muted-foreground font-normal">None</span>
                 ) : (
-                  <span className="text-foreground">{selected.length}</span>
+                  selected.length
                 )}
               </span>
             </div>
 
-            {/* Seat labels */}
             {selectedSeatLabels && (
-              <div className="rounded-lg border border-white/8 bg-white/4 px-3 py-2 text-xs font-mono text-muted-foreground/80 break-words leading-relaxed">
+              <div className="border border-border bg-muted/30 px-3 py-2 text-xs font-mono-dm text-muted-foreground break-words leading-relaxed">
                 {selectedSeatLabels}
               </div>
             )}
 
-            {/* Price per seat */}
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Price per seat</span>
               <span className="font-semibold">{formatCurrency(event.price)}</span>
             </div>
 
-            {/* Divider */}
-            <div className="border-t border-white/8" />
+            <div className="border-t border-border" />
 
-            {/* Total */}
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-muted-foreground">Total</span>
-              <span className="text-2xl font-black text-gradient">{formatCurrency(total)}</span>
+              <span className="eyebrow text-muted-foreground">Total</span>
+              <span className="font-sans font-semibold tracking-tight text-2xl">{formatCurrency(total)}</span>
             </div>
 
-            {/* Error */}
             {error && (
-              <div className="rounded-xl border border-destructive/20 bg-destructive/8 px-3 py-2.5 text-xs text-destructive leading-relaxed">
+              <div className="border border-destructive/40 bg-destructive/5 px-3 py-2.5 text-xs text-destructive leading-relaxed">
                 {error}
               </div>
             )}
 
-            {/* Polling status */}
             {phase === 'polling' && (
-              <div className="flex items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/8 px-3 py-2.5 text-xs text-amber-400">
+              <div className="flex items-center gap-2 border border-border bg-muted/30 px-3 py-2.5 text-xs text-muted-foreground">
                 <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
-                Processing payment — this may take a moment...
+                Processing — this may take a moment...
               </div>
             )}
 
-            {/* CTA Button */}
             <Button
-              className="w-full font-bold gap-2"
+              className="w-full gap-2"
               size="lg"
               disabled={selected.length === 0 || busy}
               onClick={createBooking}
             >
-              {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+              {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               {submitLabel()}
             </Button>
 
             {!isAuthenticated && selected.length > 0 && (
-              <p className="text-center text-xs text-muted-foreground/60">
-                You'll be asked to log in to confirm.
+              <p className="text-center text-xs text-muted-foreground">
+                You'll be asked to sign in to confirm.
               </p>
             )}
           </div>
