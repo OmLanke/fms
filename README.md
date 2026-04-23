@@ -477,10 +477,6 @@ The `.env.example` file contains all variables. Run `make setup` to copy it to `
 | Redpanda Console (Kafka UI) | http://localhost:8080 | Browse topics, consumer groups, messages |
 | Mongo Express | http://localhost:8081 | Browse MongoDB collections |
 | Mailpit | http://localhost:8025 | Captures all outbound email (dev only) |
-| Prometheus | http://localhost:9090 | Metrics query and alerting rules |
-| Grafana | http://localhost:3010 | Pre-built dashboards (admin / admin) |
-| Jaeger UI | http://localhost:16686 | Distributed trace explorer |
-| Loki / Grafana Explore | http://localhost:3010/explore | Log aggregation query UI |
 
 ---
 
