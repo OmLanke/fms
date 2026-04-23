@@ -17,9 +17,6 @@ function Header() {
       <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3.5 md:px-6">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 group">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-colors">
-            <Ticket className="h-4 w-4 text-primary" />
-          </div>
           <span className="text-lg font-black tracking-tight text-gradient">TicketFlow</span>
         </Link>
 

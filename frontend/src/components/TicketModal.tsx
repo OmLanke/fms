@@ -115,26 +115,10 @@ export function TicketModal({ booking, children }: TicketModalProps) {
 
           {/* ── TEAR LINE ── */}
           <div style={{ position: 'relative', height: '0', display: 'flex', alignItems: 'center' }}>
-            {/* Left notch */}
-            <div style={{
-              position: 'absolute', left: '-14px', top: '50%', transform: 'translateY(-50%)',
-              width: '28px', height: '28px', borderRadius: '50%',
-              background: '#111827',
-              border: '1px solid rgba(255,255,255,0.08)',
-              zIndex: 10,
-            }} />
-            {/* Right notch */}
-            <div style={{
-              position: 'absolute', right: '-14px', top: '50%', transform: 'translateY(-50%)',
-              width: '28px', height: '28px', borderRadius: '50%',
-              background: '#111827',
-              zIndex: 10,
-            }} />
             {/* Dashed line */}
             <div style={{
               width: '100%', height: '0',
               borderTop: '1.5px dashed rgba(255,255,255,0.12)',
-              margin: '0 8px',
             }} />
           </div>
 

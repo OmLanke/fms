@@ -5,7 +5,7 @@ import { CalendarDays, MapPin, Ticket, Zap, Shield, ArrowRight } from 'lucide-re
 import { Event, eventsApi } from '@/lib/api'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import eventImage from '../assets/Rock_Night.jpg'
+const eventImage = '/Rock_Night.jpg'
 
 export function LandingPage() {
   const [events, setEvents] = useState<Event[]>([])
