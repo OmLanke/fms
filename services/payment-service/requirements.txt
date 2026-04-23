@@ -7,4 +7,4 @@ pydantic-settings==2.5.2
 aiokafka==0.11.0
 prometheus-fastapi-instrumentator==7.0.0
 razorpay==1.4.1
-setuptools==75.1.0
+setuptools==78.1.1
