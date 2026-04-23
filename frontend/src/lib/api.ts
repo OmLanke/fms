@@ -71,6 +71,35 @@ export interface BookingAccepted {
   status: 'PENDING'
 }
 
+export interface PaymentOrderRequest {
+  booking_id: string
+  user_id: string
+  amount: number
+  currency?: string
+}
+
+export interface PaymentOrderResponse {
+  payment_id: string
+  order_id: string
+  amount: number
+  currency: string
+  razorpay_key_id: string
+}
+
+export interface PaymentVerifyRequest {
+  payment_id: string
+  razorpay_order_id: string
+  razorpay_payment_id: string
+  signature: string
+}
+
+export interface PaymentVerifyResponse {
+  id: string
+  status: 'PENDING' | 'SUCCESS' | 'FAILED'
+  providerRef?: string
+  updatedAt: string
+}
+
 // Auth API
 export const authApi = {
   register: async (data: { name: string; email: string; password: string }) => {
@@ -133,12 +162,33 @@ export const bookingsApi = {
   },
 }
 
+export const paymentsApi = {
+  createOrder: async (data: PaymentOrderRequest): Promise<PaymentOrderResponse> => {
+    const res = await api.post<PaymentOrderResponse>('/payments/create-order', data)
+    return res.data
+  },
+  verify: async (data: PaymentVerifyRequest): Promise<PaymentVerifyResponse> => {
+    const res = await api.post<PaymentVerifyResponse>('/payments/verify', data)
+    return res.data
+  },
+}
+
 const POLL_INTERVAL_MS = 1500
-const POLL_TIMEOUT_MS = 30_000
+const POLL_TIMEOUT_MS = 45_000
+
+export class BookingStatusTimeoutError extends Error {
+  bookingId: string
+
+  constructor(bookingId: string) {
+    super('Booking is still processing. Check "My Bookings" for the final status.')
+    this.name = 'BookingStatusTimeoutError'
+    this.bookingId = bookingId
+  }
+}
 
 /**
  * Polls GET /bookings/:id every 1.5s until the booking leaves PENDING state,
- * or until the 30-second timeout is reached.
+ * or until the timeout is reached.
  */
 export async function pollBookingStatus(bookingId: string): Promise<Booking> {
   const deadline = Date.now() + POLL_TIMEOUT_MS
@@ -151,5 +201,15 @@ export async function pollBookingStatus(bookingId: string): Promise<Booking> {
     await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS))
   }
 
-  throw new Error('Booking confirmation timed out. Check "My Bookings" for the final status.')
+  // One last read avoids false timeout errors if status changed right at the boundary.
+  try {
+    const latest = await bookingsApi.getById(bookingId)
+    if (latest.status !== 'PENDING') {
+      return latest
+    }
+  } catch {
+    // Ignore final-read errors and treat this as an in-progress timeout.
+  }
+
+  throw new BookingStatusTimeoutError(bookingId)
 }

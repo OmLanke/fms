@@ -3,7 +3,7 @@ import gsap from 'gsap'
 import { bookingsApi, Booking, inventoryApi } from '@/lib/api'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { Ticket } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { TicketModal } from '@/components/TicketModal'
 
@@ -63,6 +63,8 @@ async function buildSeatLabelsByBooking(bookings: Booking[]): Promise<Record<str
 }
 
 export function BookingsPage() {
+  const location = useLocation()
+  const notice = (location.state as { notice?: string } | null)?.notice
   const [bookings, setBookings] = useState<Booking[]>([])
   const [seatLabelsByBooking, setSeatLabelsByBooking] = useState<Record<string, string[]>>({})
   const [loading, setLoading] = useState(true)
@@ -176,6 +178,12 @@ export function BookingsPage() {
           </div>
         )}
       </div>
+
+      {notice && (
+        <div className="mb-6 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-300 font-sans-dm">
+          {notice}
+        </div>
+      )}
 
       {/* Loading state */}
       {loading && (

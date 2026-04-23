@@ -35,6 +35,7 @@ public class BookingEventProducer {
                 .bookingId(booking.getId())
                 .userId(booking.getUserId())
                 .amount(booking.getTotalAmount())
+                .currency("INR")
                 .build();
         kafkaTemplate.send("ticketflow.payment.requested", booking.getId(), event);
         log.info("Published payment.requested for bookingId={}", booking.getId());

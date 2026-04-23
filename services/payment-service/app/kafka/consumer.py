@@ -51,7 +51,7 @@ async def handle_message(data: dict):
     booking_id = data.get("bookingId")
     user_id = data.get("userId")
     amount = data.get("amount")
-    currency = data.get("currency", "USD")
+    currency = data.get("currency", "INR")
 
     if not booking_id or not user_id or amount is None:
         logger.warning(f"Received malformed payment.requested message: {data}")
@@ -67,11 +67,8 @@ async def handle_message(data: dict):
             amount=amount,
             currency=currency,
         )
-        await publish_payment_processed(
-            booking_id=booking_id,
-            payment_id=payment.id,
-            status=payment.status,
-            reason=payment.reason,
+        logger.info(
+            f"Payment {payment.id} for booking {booking_id} is pending Razorpay verification"
         )
     except Exception as e:
         logger.error(
