@@ -282,27 +282,29 @@ function BookingCard({
       </div>
 
       {/* Ticket stub */}
-      <div className="w-[100px] md:w-[120px] shrink-0 border-l border-dashed border-border flex flex-col items-center justify-center gap-4 relative bg-card">
-        <div className="text-center space-y-1">
-          <p className="font-mono text-[9px] font-bold text-muted-foreground/40 uppercase">Ref</p>
-          <p className="font-mono text-xs font-bold text-foreground/60">{shortId}</p>
-        </div>
+      {booking.status === 'CONFIRMED' && (
+        <div className="w-[100px] md:w-[120px] shrink-0 border-l border-dashed border-border flex flex-col items-center justify-center gap-4 relative bg-card">
+          <div className="text-center space-y-1">
+            <p className="font-mono text-[9px] font-bold text-muted-foreground/40 uppercase">Ref</p>
+            <p className="font-mono text-xs font-bold text-foreground/60">{shortId}</p>
+          </div>
 
-        {/* Decorative Barcode */}
-        <div className="flex items-end justify-center gap-0.5 h-8 w-full opacity-40">
-          {[...Array(10)].map((_, i) => (
-            <div
-              key={i}
-              className="bg-foreground w-[1px] md:w-[2px]"
-              style={{ height: `${Math.floor((i % 5) * 15) + 20}%` }}
-            />
-          ))}
-        </div>
+          {/* Decorative Barcode */}
+          <div className="flex items-end justify-center gap-0.5 h-8 w-full opacity-40">
+            {[...Array(10)].map((_, i) => (
+              <div
+                key={i}
+                className="bg-foreground w-[1px] md:w-[2px]"
+                style={{ height: `${Math.floor((i % 5) * 15) + 20}%` }}
+              />
+            ))}
+          </div>
 
-        <div className="text-[10px] font-mono font-bold uppercase tracking-tighter text-primary hover:text-primary/80 transition-colors">
-          View ticket
+          <div className="text-[10px] font-mono font-bold uppercase tracking-tighter text-primary hover:text-primary/80 transition-colors">
+            View ticket
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
