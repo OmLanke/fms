@@ -41,6 +41,8 @@ export interface Event {
   date: string
   price: number
   totalSeats: number
+  image_url?: string
+  imageUrl?: string
   createdAt: string
   updatedAt: string
 }

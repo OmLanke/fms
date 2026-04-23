@@ -145,7 +145,7 @@ function EventCard({ event }: { event: Event }) {
       <Link to={`/events/${event.id}`} className="flex h-full flex-col">
         <div className="aspect-[4/3] w-full overflow-hidden bg-muted">
           <img
-            src={eventImage}
+            src={event.image_url || event.imageUrl || eventImage}
             alt={event.name}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
           />

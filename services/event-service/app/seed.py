@@ -59,8 +59,9 @@ async def seed():
     # --- Events ---
     events_data = [
         EventDocument(
-            name="Rock Night Live",
-            description="An electrifying rock concert featuring top bands from around the world.",
+            name="Dhurandar 2",
+            description="Hamza Ali Mazari pursues Major Iqbal to dismantle Pakistan's crime system. As his mission unfolds, his past reveals a transformative history that shaped his relentless drive for justice.",
+            image_url="/src/assets/dhurandar2.png",
             venue_id=msg.id,
             venue={
                 "id": msg.id,
@@ -77,8 +78,9 @@ async def seed():
             tags=["rock", "live", "music"],
         ),
         EventDocument(
-            name="Jazz & Blues Festival",
-            description="A soulful evening celebrating the finest jazz and blues artists.",
+            name="Hangover",
+            description="Three buddies wake up from a bachelor party in Las Vegas with no memory of the previous night and the bachelor missing. They must make their way around the city in order to find their friend in time for his wedding.",
+            image_url="/src/assets/hangover.jpg",
             venue_id=o2.id,
             venue={
                 "id": o2.id,
@@ -95,8 +97,9 @@ async def seed():
             tags=["jazz", "blues", "festival"],
         ),
         EventDocument(
-            name="Classical Symphony Evening",
-            description="An intimate symphony performance in the iconic Sydney Opera House.",
+            name="Bean",
+            description="Mr. Bean is a well-meaning yet clumsy and destructive security guard at the National Gallery in London. After the gallery's sentimental chairman prevents the board of directors, who despise Bean for his laziness, from firing him, the board instead opts to send Bean on a three-month sabbatical to serve as their representative.",
+            image_url="/src/assets/mrbean.jpg",
             venue_id=soh.id,
             venue={
                 "id": soh.id,
